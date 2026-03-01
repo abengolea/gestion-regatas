@@ -1,5 +1,6 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
+# Proyecto: BasquetAdmin (basquetadmin)
 
 runConfig:
   maxInstances: 1
@@ -11,33 +12,35 @@ env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     secret: firebase-api-key
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    value: lexflow-consultas.firebaseapp.com
+    value: basquetadmin.firebaseapp.com
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: lexflow-consultas
+    value: basquetadmin
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: lexflow-consultas.firebasestorage.app
+    value: basquetadmin.firebasestorage.app
     availability:
       - BUILD
       - RUNTIME
+  # De Firebase Console → basquetadmin → Configuración → Tus apps (agregar app web </> si no existe)
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    value: "664196918383"
+    value: "253452648265"
     availability:
       - BUILD
       - RUNTIME
+  # Firebase Console → basquetadmin → Configuración → agregar app web </> → copiar appId
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: "1:664196918383:web:e58546257d0d98e9fdf19a"
+    value: "COPIAR-DE-FIREBASE-CONSOLE"
     availability:
       - BUILD
       - RUNTIME
-  # URL base de la app en producción (redirect_uri OAuth Mercado Pago)
+  # Actualizar tras el deploy (Firebase muestra la URL en App Hosting)
   - variable: NEXT_PUBLIC_APP_URL
-    value: "https://escuelariver--lexflow-consultas.us-east4.hosted.app"
+    value: "https://tu-url.hosted.app"
     availability:
       - BUILD
       - RUNTIME

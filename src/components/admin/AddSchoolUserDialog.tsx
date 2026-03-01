@@ -179,7 +179,7 @@ export function AddSchoolUserDialog({ schoolId }: { schoolId: string }) {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="eperez@riverplate.com" {...field} />
+                    <Input type="email" placeholder="eperez@clubnombre.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

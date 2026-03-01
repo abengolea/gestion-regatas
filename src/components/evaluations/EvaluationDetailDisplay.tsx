@@ -30,6 +30,11 @@ interface EvaluationDetailDisplayProps {
 }
 
 const positionLabels: Record<string, string> = {
+  base: "Base",
+  escolta: "Escolta",
+  ala: "Ala",
+  ala_pivot: "Ala-pívot",
+  pivot: "Pívot",
   delantero: "Delantero",
   mediocampo: "Mediocampo",
   defensor: "Defensor",
@@ -37,22 +42,16 @@ const positionLabels: Record<string, string> = {
 };
 
 const skillLabels: Record<string, string> = {
+    manejo: "Manejo de balón",
     control: "Control de Balón",
     pase: "Pase",
+    tiro: "Tiro / Finalización",
     definicion: "Definición",
     dribbling: "Dribbling",
     posicionamiento: "Posicionamiento",
     tomaDeDecision: "Toma de Decisión",
+    defensa: "Defensa / Presión",
     presion: "Presión y Recuperación",
-    // Arquero
-    reflejos: "Reflejos y reacción",
-    salida: "Salida del arco",
-    juegoConLosPies: "Juego con los pies",
-    atajadaColocacion: "Atajada y colocación",
-    despeje: "Despeje y centro",
-    posicionamientoArco: "Posicionamiento en el arco",
-    comunicacionDefensa: "Comunicación con la defensa",
-    // Socio-emocional
     respect: "Respeto",
     responsibility: "Responsabilidad",
     teamwork: "Compañerismo",

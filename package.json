@@ -1,5 +1,5 @@
 {
-  "name": "escuelariver",
+  "name": "escuelabasquet",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,6 +11,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "seed:support": "tsx scripts/seed-support-flows.ts",
+    "seed:super-admin": "tsx scripts/create-super-admin.ts",
     "simulate:payment": "tsx scripts/simulate-electronic-payment.ts"
   },
   "dependencies": {

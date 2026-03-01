@@ -28,7 +28,6 @@ interface PaymentConfigTabProps {
 export function PaymentConfigTab({ schoolId, getToken }: PaymentConfigTabProps) {
   const [amount, setAmount] = useState("");
   const [amountFemenino, setAmountFemenino] = useState("");
-  const [amountArquero, setAmountArquero] = useState("");
   const [dueDayOfMonth, setDueDayOfMonth] = useState("10");
   const [registrationAmount, setRegistrationAmount] = useState("");
   const [clothingAmount, setClothingAmount] = useState("");
@@ -82,7 +81,6 @@ export function PaymentConfigTab({ schoolId, getToken }: PaymentConfigTabProps) 
           const data = await configRes.json();
           setAmount(String(data.amount ?? ""));
           setAmountFemenino(data.amountFemenino !== undefined ? String(data.amountFemenino) : "40000");
-          setAmountArquero(data.amountArquero !== undefined ? String(data.amountArquero) : "30000");
           setDueDayOfMonth(String(data.dueDayOfMonth ?? 10));
           setRegistrationAmount(String(data.registrationAmount ?? ""));
           setClothingAmount(String(data.clothingAmount ?? ""));
@@ -149,13 +147,8 @@ export function PaymentConfigTab({ schoolId, getToken }: PaymentConfigTabProps) 
       return;
     }
     const amFem = amountFemenino === "" ? undefined : parseFloat(amountFemenino);
-    const amArq = amountArquero === "" ? undefined : parseFloat(amountArquero);
     if (amountFemenino !== "" && (isNaN(amFem!) || amFem! < 0)) {
       toast({ title: "Error", description: "Cuota femenino debe ser ≥ 0", variant: "destructive" });
-      return;
-    }
-    if (amountArquero !== "" && (isNaN(amArq!) || amArq! < 0)) {
-      toast({ title: "Error", description: "Cuota arquero debe ser ≥ 0", variant: "destructive" });
       return;
     }
     const regAm = registrationAmount === "" ? 0 : parseFloat(registrationAmount);
@@ -205,7 +198,6 @@ export function PaymentConfigTab({ schoolId, getToken }: PaymentConfigTabProps) 
           currency: "ARS",
           dueDayOfMonth: day,
           amountFemenino: amFem,
-          amountArquero: amArq,
           registrationAmount: regAm,
           clothingAmount: clothAm,
           clothingInstallments: clothAm > 0 ? clothInst : undefined,
@@ -323,18 +315,6 @@ export function PaymentConfigTab({ schoolId, getToken }: PaymentConfigTabProps) 
               placeholder="40000"
             />
             <p className="text-sm text-muted-foreground mt-1">Por defecto 40000. Las jugadoras pagan esta cuota en lugar del monto base.</p>
-          </div>
-          <div>
-            <Label htmlFor="amountArquero">Cuota para arqueros (ARS)</Label>
-            <Input
-              id="amountArquero"
-              type="number"
-              min={0}
-              value={amountArquero}
-              onChange={(e) => setAmountArquero(e.target.value)}
-              placeholder="30000"
-            />
-            <p className="text-sm text-muted-foreground mt-1">Por defecto 30000. Los arqueros pagan esta cuota en lugar del monto base.</p>
           </div>
           <div>
             <Label htmlFor="dueDay">Día de vencimiento (1-31)</Label>

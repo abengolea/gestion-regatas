@@ -185,7 +185,7 @@ export function CreateSchoolDialog() {
                     <FormItem>
                     <FormLabel>Nombre de la Sede</FormLabel>
                     <FormControl>
-                        <Input placeholder="Ej: Escuela de River - Córdoba" {...field} />
+                        <Input placeholder="Ej: Club Básquet X - Córdoba" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -256,7 +256,7 @@ export function CreateSchoolDialog() {
                         <FormItem>
                         <FormLabel>Email del Admin</FormLabel>
                         <FormControl>
-                            <Input type="email" placeholder="mg@riverplate.com" {...field} />
+                            <Input type="email" placeholder="mg@clubnombre.com" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -269,7 +269,7 @@ export function CreateSchoolDialog() {
                         <FormItem>
                         <FormLabel>Confirmar Email del Admin</FormLabel>
                         <FormControl>
-                            <Input type="email" placeholder="mg@riverplate.com" {...field} />
+                            <Input type="email" placeholder="mg@clubnombre.com" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>

@@ -63,9 +63,9 @@ const playerSchema = z.object({
   // Datos físicos y deportivos
   altura_cm: z.union([z.number().min(80, "Mín. 80 cm").max(220, "Máx. 220 cm"), z.undefined()]).optional(),
   peso_kg: z.union([z.number().min(15, "Mín. 15 kg").max(150, "Máx. 150 kg"), z.undefined()]).optional(),
-  pie_dominante: z.enum(["derecho", "izquierdo", "ambidiestro"]).optional(),
-  posicion_preferida: z.enum(["delantero", "mediocampo", "defensor", "arquero"]).optional(),
-  genero: z.enum(["masculino", "femenino", "arquero"]).optional(),
+  mano_dominante: z.enum(["derecho", "izquierdo", "ambidiestro"]).optional(),
+  posicion_preferida: z.enum(["base", "escolta", "ala", "ala_pivot", "pivot"]).optional(),
+  genero: z.enum(["masculino", "femenino"]).optional(),
 });
 
 interface EditPlayerDialogProps {
@@ -111,7 +111,7 @@ export function EditPlayerDialog({
       photoUrl: player.photoUrl ?? "",
       altura_cm: player.altura_cm ?? undefined,
       peso_kg: player.peso_kg ?? undefined,
-      pie_dominante: player.pie_dominante ?? undefined,
+      mano_dominante: (player.mano_dominante ?? (player as unknown as { pie_dominante?: "derecho" | "izquierdo" | "ambidiestro" }).pie_dominante) ?? undefined,
       posicion_preferida: player.posicion_preferida ?? undefined,
       genero: player.genero ?? undefined,
     },
@@ -139,7 +139,7 @@ export function EditPlayerDialog({
         photoUrl: player.photoUrl ?? "",
         altura_cm: player.altura_cm ?? undefined,
         peso_kg: player.peso_kg ?? undefined,
-        pie_dominante: player.pie_dominante ?? undefined,
+        mano_dominante: (player.mano_dominante ?? (player as unknown as { pie_dominante?: "derecho" | "izquierdo" | "ambidiestro" }).pie_dominante) ?? undefined,
         posicion_preferida: player.posicion_preferida ?? undefined,
         genero: player.genero ?? undefined,
       });
@@ -165,7 +165,7 @@ export function EditPlayerDialog({
       observations: values.observations || null,
       altura_cm: values.altura_cm ?? null,
       peso_kg: values.peso_kg ?? null,
-      pie_dominante: values.pie_dominante ?? null,
+      mano_dominante: values.mano_dominante ?? null,
       posicion_preferida: values.posicion_preferida ?? null,
       genero: (values.genero && values.genero.trim()) ? values.genero : null,
     };
@@ -360,10 +360,9 @@ export function EditPlayerDialog({
                             <SelectItem value="__none__">No especificado</SelectItem>
                             <SelectItem value="masculino">Masculino</SelectItem>
                             <SelectItem value="femenino">Femenino</SelectItem>
-                            <SelectItem value="arquero">Arquero</SelectItem>
                           </SelectContent>
                         </Select>
-                        <FormDescription>Masculino y femenino usan SUB-5 a SUB-18. Arquero entrena una vez por semana (sin género).</FormDescription>
+                        <FormDescription>Masculino y femenino usan SUB-5 a SUB-18 para categorías de edad.</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -545,10 +544,10 @@ export function EditPlayerDialog({
                   />
                   <FormField
                     control={form.control}
-                    name="pie_dominante"
+                    name="mano_dominante"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Pie predominante</FormLabel>
+                        <FormLabel>Mano dominante</FormLabel>
                         <Select
                           onValueChange={(v) => field.onChange(v === "__none__" ? undefined : v)}
                           value={field.value ?? "__none__"}
@@ -565,7 +564,7 @@ export function EditPlayerDialog({
                             <SelectItem value="ambidiestro">Ambidiestro</SelectItem>
                           </SelectContent>
                         </Select>
-                        <FormDescription>Lateralidad del jugador.</FormDescription>
+                        <FormDescription>Mano con la que dribblea y tira.</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -587,10 +586,11 @@ export function EditPlayerDialog({
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="__none__">No especificado</SelectItem>
-                            <SelectItem value="delantero">Delantero</SelectItem>
-                            <SelectItem value="mediocampo">Mediocampo</SelectItem>
-                            <SelectItem value="defensor">Defensor</SelectItem>
-                            <SelectItem value="arquero">Arquero</SelectItem>
+                            <SelectItem value="base">Base</SelectItem>
+                            <SelectItem value="escolta">Escolta</SelectItem>
+                            <SelectItem value="ala">Ala</SelectItem>
+                            <SelectItem value="ala_pivot">Ala-pívot</SelectItem>
+                            <SelectItem value="pivot">Pívot</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

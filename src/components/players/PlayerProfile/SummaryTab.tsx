@@ -9,13 +9,18 @@ import { EditCoachFeedbackDialog } from "@/components/players/EditCoachFeedbackD
 import type { Player } from "@/lib/types";
 
 const POSICION_LABELS: Record<string, string> = {
+  base: "Base",
+  escolta: "Escolta",
+  ala: "Ala",
+  ala_pivot: "Ala-pívot",
+  pivot: "Pívot",
+  // Legacy (fútbol) - para datos existentes
   delantero: "Delantero",
   mediocampo: "Mediocampo",
   defensor: "Defensor",
-  arquero: "Arquero",
 };
 
-const PIE_LABELS: Record<string, string> = {
+const MANO_LABELS: Record<string, string> = {
   derecho: "Derecho",
   izquierdo: "Izquierdo",
   ambidiestro: "Ambidiestro",
@@ -31,7 +36,8 @@ interface SummaryTabProps {
 
 export function SummaryTab({ player, lastCoachComment, canEditCoachFeedback, schoolId, playerId }: SummaryTabProps) {
     const [editFeedbackOpen, setEditFeedbackOpen] = useState(false);
-    const hasDeportivo = player.posicion_preferida || player.pie_dominante || player.altura_cm || player.peso_kg;
+    const mano = player.mano_dominante ?? (player as unknown as { pie_dominante?: string }).pie_dominante;
+    const hasDeportivo = player.posicion_preferida || mano || player.altura_cm || player.peso_kg;
 
     const displayFeedback =
       (player.coachFeedback?.trim() || lastCoachComment?.trim() || player.observations?.trim()) ||
@@ -96,10 +102,10 @@ export function SummaryTab({ player, lastCoachComment, canEditCoachFeedback, sch
                                     <TableCell className="text-right">{POSICION_LABELS[player.posicion_preferida] || player.posicion_preferida}</TableCell>
                                 </TableRow>
                             )}
-                            {player.pie_dominante && (
+                            {mano && (
                                 <TableRow>
-                                    <TableCell className="font-medium text-muted-foreground">Pie predominante</TableCell>
-                                    <TableCell className="text-right">{PIE_LABELS[player.pie_dominante] || player.pie_dominante}</TableCell>
+                                    <TableCell className="font-medium text-muted-foreground">Mano dominante</TableCell>
+                                    <TableCell className="text-right">{mano ? (MANO_LABELS[mano] ?? String(mano)) : ""}</TableCell>
                                 </TableRow>
                             )}
                             {player.altura_cm != null && (

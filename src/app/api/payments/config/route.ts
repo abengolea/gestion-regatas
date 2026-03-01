@@ -57,8 +57,6 @@ const PutBodySchema = z.object({
   amountByCategory: z.record(z.string(), z.number().min(0)).optional(),
   /** Cuota mensual para jugadoras (género femenino). Default 40000. */
   amountFemenino: z.number().min(0).optional(),
-  /** Cuota mensual para arqueros (posición arquero). Default 30000. */
-  amountArquero: z.number().min(0).optional(),
   /** Montos de inscripción por categoría. */
   registrationAmountByCategory: z.record(z.string(), z.number().min(0)).optional(),
   registrationCancelsMonthFee: z.boolean().optional(),
@@ -97,7 +95,6 @@ export async function PUT(request: Request) {
       registrationAmount,
       amountByCategory,
       amountFemenino,
-      amountArquero,
       registrationAmountByCategory,
       registrationCancelsMonthFee,
       clothingAmount,
@@ -121,7 +118,6 @@ export async function PUT(request: Request) {
     if (registrationAmount !== undefined) update.registrationAmount = registrationAmount;
     if (amountByCategory !== undefined) update.amountByCategory = amountByCategory;
     if (amountFemenino !== undefined) update.amountFemenino = amountFemenino;
-    if (amountArquero !== undefined) update.amountArquero = amountArquero;
     if (registrationAmountByCategory !== undefined) update.registrationAmountByCategory = registrationAmountByCategory;
     if (registrationCancelsMonthFee !== undefined) update.registrationCancelsMonthFee = registrationCancelsMonthFee;
     if (clothingAmount !== undefined) update.clothingAmount = clothingAmount;

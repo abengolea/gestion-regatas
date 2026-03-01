@@ -3,7 +3,7 @@
  * Envía por sistema el email "Fuiste aceptado" al jugador recién aprobado.
  * Solo admin o coach de la escuela puede llamar.
  * Escribe en la colección `mail` para que la extensión Trigger Email (firestore-send-email) envíe el correo.
- * Usa plantilla con logo y tipografía River (email-template-server).
+ * Usa plantilla con logo (email-template-server).
  */
 
 import { NextResponse } from "next/server";
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     }
 
     const to = (body.playerEmail as string).trim().toLowerCase();
-    const subject = "Fuiste aceptado - Escuelas River SN";
+    const subject = "Fuiste aceptado - Escuela Básquet";
     const contentHtml = `
       <p>Tu solicitud de registro fue <strong>aceptada</strong>.</p>
       <p>Ya podés ingresar al panel con tu email y la contraseña que elegiste al registrarte.</p>

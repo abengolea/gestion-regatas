@@ -28,10 +28,7 @@ import { uploadPlayerVideoWithProgress } from "@/lib/player-videos";
 import { buildEmailHtml, escapeHtml, htmlToPlainText, sendMailDoc } from "@/lib/email";
 import { useToast } from "@/hooks/use-toast";
 import { Video, Upload, Loader2, Circle, Square } from "lucide-react";
-import {
-  VIDEO_SKILLS_GENERAL,
-  VIDEO_SKILLS_GOALKEEPER,
-} from "@/lib/video-skills";
+import { VIDEO_SKILLS_ALL } from "@/lib/video-skills";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface RecordOrUploadVideoDialogProps {
@@ -236,10 +233,10 @@ export function RecordOrUploadVideoDialog({
         const playerEmail = playerData?.email?.trim?.();
         const firstName = playerData?.firstName ?? (playerName?.trim() || "jugador");
         if (playerEmail) {
-          const subject = "Nuevo video en tu videoteca - Escuelas River SN";
-          const contentHtml = `<p>Hola <strong>${escapeHtml(firstName)}</strong>,</p><p>Tu entrenador subió un nuevo video a tu videoteca. Entrá al panel para verlo.</p><p><a href="${typeof window !== "undefined" ? window.location.origin : ""}/dashboard" style="color: #d4002a; font-weight: bold;">Ver mi videoteca</a></p>`;
+          const subject = "Nuevo video en tu videoteca - Escuela Básquet";
+          const contentHtml = `<p>Hola <strong>${escapeHtml(firstName)}</strong>,</p><p>Tu entrenador subió un nuevo video a tu videoteca. Entrá al panel para verlo.</p><p><a href="${typeof window !== "undefined" ? window.location.origin : ""}/dashboard" style="color: #f97316; font-weight: bold;">Ver mi videoteca</a></p>`;
           const html = buildEmailHtml(contentHtml, {
-            title: "Escuelas River SN",
+            title: "Escuela Básquet",
             greeting: "Tenés un nuevo video en tu perfil.",
             baseUrl: typeof window !== "undefined" ? window.location.origin : "",
           });
@@ -442,42 +439,21 @@ export function RecordOrUploadVideoDialog({
         <div className="space-y-2">
           <Label>Habilidades (opcional)</Label>
           <ScrollArea className="h-[140px] rounded-md border p-2">
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">Generales</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {VIDEO_SKILLS_GENERAL.map((s) => (
-                    <Button
-                      key={s.id}
-                      type="button"
-                      variant={selectedSkills.includes(s.id) ? "default" : "outline"}
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => toggleSkill(s.id)}
-                      disabled={uploading}
-                    >
-                      {s.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">Arquero</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {VIDEO_SKILLS_GOALKEEPER.map((s) => (
-                    <Button
-                      key={s.id}
-                      type="button"
-                      variant={selectedSkills.includes(s.id) ? "default" : "outline"}
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => toggleSkill(s.id)}
-                      disabled={uploading}
-                    >
-                      {s.label}
-                    </Button>
-                  ))}
-                </div>
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-1.5">
+                {VIDEO_SKILLS_ALL.map((s) => (
+                  <Button
+                    key={s.id}
+                    type="button"
+                    variant={selectedSkills.includes(s.id) ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => toggleSkill(s.id)}
+                    disabled={uploading}
+                  >
+                    {s.label}
+                  </Button>
+                ))}
               </div>
             </div>
           </ScrollArea>
@@ -489,7 +465,7 @@ export function RecordOrUploadVideoDialog({
             id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ej: Control de balón, Entrenamiento 08/02"
+            placeholder="Ej: Dribbling, Tiro libre, Entrenamiento 08/02"
             disabled={uploading}
           />
         </div>

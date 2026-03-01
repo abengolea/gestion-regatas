@@ -46,7 +46,7 @@ const interpretivePrompt = ai.definePrompt({
   input: { schema: AnalysisPromptInputSchema },
   output: { schema: GenerateInterpretiveReportOutputSchema },
   prompt: `
-Actúa como un preparador físico y experto en fútbol juvenil de la "Escuela de River Plate".
+Actúa como un preparador físico y experto en básquet juvenil.
 Genera un informe interpretativo FORMATIVO para el jugador {{playerName}} basado en sus evaluaciones físicas.
 
 **Datos de las evaluaciones:**

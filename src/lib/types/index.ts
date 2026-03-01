@@ -91,12 +91,12 @@ export interface Player {
   peso_kg?: number;
   /** Envergadura en cm (distancia entre las puntas de los dedos con brazos extendidos). */
   envergadura_cm?: number;
-  /** Pie predominante (lateralidad). */
-  pie_dominante?: 'derecho' | 'izquierdo' | 'ambidiestro';
+  /** Mano predominante (lateralidad en básquet). */
+  mano_dominante?: 'derecho' | 'izquierdo' | 'ambidiestro';
   /** Posición preferida en cancha. */
-  posicion_preferida?: 'delantero' | 'mediocampo' | 'defensor' | 'arquero';
-  /** Categoría de entrenamiento: masculino, femenino o arquero (entrenamiento una vez por semana, sin género). */
-  genero?: 'masculino' | 'femenino' | 'arquero';
+  posicion_preferida?: 'base' | 'escolta' | 'ala' | 'ala_pivot' | 'pivot';
+  /** Categoría de entrenamiento: masculino o femenino. */
+  genero?: 'masculino' | 'femenino';
   /** Número de camiseta (opcional). */
   numero_camiseta?: number;
   /** Talle de camiseta (opcional). */
@@ -197,12 +197,12 @@ export interface TrainingSlot {
   dayOfWeek: number;
   /** Hora en formato "HH:mm" (ej. "17:00") */
   time?: string;
-  /** Categoría inicial del rango (ej. "SUB-5"). Para slots de arquero puede ser "ARQUERO". */
+  /** Categoría inicial del rango (ej. "SUB-5"). */
   categoryFrom: string;
-  /** Categoría final del rango (ej. "SUB-10"). Para slots de arquero puede ser "ARQUERO". */
+  /** Categoría final del rango (ej. "SUB-10"). */
   categoryTo: string;
-  /** Tipo de categoría: masculino, femenino o arquero. Si no se define, el slot incluye todos los géneros (retrocompatibilidad). */
-  tipoCategoria?: 'masculino' | 'femenino' | 'arquero';
+  /** Tipo de categoría: masculino o femenino. Si no se define, el slot incluye todos los géneros (retrocompatibilidad). */
+  tipoCategoria?: 'masculino' | 'femenino';
   /** Cupo máximo de jugadores en este slot */
   maxQuota: number;
   /** UID del entrenador asignado (SchoolUser con role coach) */
@@ -228,7 +228,7 @@ export interface Attendance {
 }
 
 /** Posición del jugador calificada por el entrenador. */
-export type PlayerPosition = 'delantero' | 'mediocampo' | 'defensor' | 'arquero';
+export type PlayerPosition = 'base' | 'escolta' | 'ala' | 'ala_pivot' | 'pivot';
 
 // Unifica todas las evaluaciones en un solo documento por fecha.
 export interface Evaluation {

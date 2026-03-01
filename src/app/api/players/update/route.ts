@@ -25,7 +25,7 @@ type UpdatePayload = {
     observations: string | null;
     altura_cm: number | null;
     peso_kg: number | null;
-    pie_dominante: string | null;
+    mano_dominante: string | null;
     posicion_preferida: string | null;
   };
   oldEmail?: string | null;

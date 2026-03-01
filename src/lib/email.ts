@@ -5,36 +5,34 @@ import { EMAIL_LOGO_BASE64 } from "./email-logo-base64";
 /** Colección que usa la extensión Trigger Email (firestore-send-email). */
 export const MAIL_COLLECTION = "mail";
 
-const BRAND_RED = "#d4002a";
-const BODY_BG = "#f5f5f5";
+const BRAND_PRIMARY = "#f97316";
+const BODY_BG = "#faf9f7";
 const CARD_BG = "#ffffff";
 const TEXT_COLOR = "#1a1a1a";
 const MUTED_COLOR = "#6b7280";
-const HEADER_BG = "#0a0a0a";
+const HEADER_BG = "#0c0c0c";
 
 /** CID del logo como adjunto inline (compatible con clientes que bloquean data: URI). */
-const LOGO_CID = "logo@river";
+const LOGO_CID = "logo@app";
 
 /**
- * Genera HTML de correo con tipografía y estilo Escuela River: cabecera negra,
- * logo de River (adjunto inline por CID) + "ESCUELAS" (rojo) "RIVER" (blanco) "SN" (rojo).
+ * Genera HTML de correo con tipografía y estilo: cabecera,
+ * logo (adjunto inline por CID) + nombre de la app.
  */
 export function buildEmailHtml(
   contentHtml: string,
   options?: { title?: string; greeting?: string; baseUrl?: string }
 ): string {
-  const title = options?.title ?? "Escuelas River SN";
+  const title = options?.title ?? "Escuela Básquet";
   const greeting = options?.greeting ?? "";
 
   const headerContent = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
         <tr>
           <td style="padding-right: 16px; vertical-align: middle;">
-            <img src="cid:${LOGO_CID}" alt="River" width="48" height="48" style="display: block; width: 48px; height: 48px; object-fit: contain;" />
+            <img src="cid:${LOGO_CID}" alt="Logo" width="48" height="48" style="display: block; width: 48px; height: 48px; object-fit: contain;" />
           </td>
           <td style="vertical-align: middle;">
-            <span style="color: ${BRAND_RED}; font-weight: 800; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase;">ESCUELAS</span>
-            <span style="color: #ffffff; font-weight: 800; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase;"> RIVER </span>
-            <span style="color: ${BRAND_RED}; font-weight: 800; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase;">SN</span>
+            <span style="color: #ffffff; font-weight: 700; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase;">ESCUELA BÁSQUET</span>
           </td>
         </tr>
       </table>`;
@@ -63,7 +61,7 @@ export function buildEmailHtml(
                 ${contentHtml}
               </div>
               <p style="margin: 24px 0 0 0; padding-top: 16px; border-top: 1px solid #eee; font-size: 13px; color: ${MUTED_COLOR};">
-                Este correo fue enviado por Escuelas River SN. No responder a este mensaje.
+                Este correo fue enviado por Escuela Básquet. No responder a este mensaje.
               </p>
             </td>
           </tr>
@@ -110,7 +108,7 @@ export interface MailPayload {
 
 /** Adjunto inline del logo para que los clientes de correo lo muestren (evita data: URI bloqueados). */
 const LOGO_ATTACHMENT = {
-  filename: "logo-river.png",
+  filename: "logo-app.png",
   content: EMAIL_LOGO_BASE64,
   encoding: "base64" as const,
   cid: LOGO_CID,

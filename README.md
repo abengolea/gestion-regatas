@@ -1,6 +1,6 @@
-# Escuela River App
+# Escuela Básquet App
 
-Aplicación web para gestión y seguimiento de jugadores de escuelas de fútbol.
+Aplicación web para gestión y seguimiento de jugadores de escuelas y clubes de básquet.
 
 Desarrollada con Next.js y Firebase (Firestore, Auth, App Hosting).
 

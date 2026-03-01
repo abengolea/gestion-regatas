@@ -5,20 +5,16 @@ import { EvolutionChart } from "@/components/charts/EvolutionChart";
 import type { Evaluation } from "@/lib/types";
 
 const skillLabels: Record<string, string> = {
+  manejo: "Manejo de balón",
   control: "Control de Balón",
   pase: "Pase",
+  tiro: "Tiro / Finalización",
   definicion: "Definición",
   dribbling: "Dribbling",
   posicionamiento: "Posicionamiento",
   tomaDeDecision: "Toma de Decisión",
+  defensa: "Defensa / Presión",
   presion: "Presión y Recuperación",
-  reflejos: "Reflejos y reacción",
-  salida: "Salida del arco",
-  juegoConLosPies: "Juego con los pies",
-  atajadaColocacion: "Atajada y colocación",
-  despeje: "Despeje y centro",
-  posicionamientoArco: "Posicionamiento en el arco",
-  comunicacionDefensa: "Comunicación con la defensa",
   respect: "Respeto",
   responsibility: "Responsabilidad",
   teamwork: "Compañerismo",

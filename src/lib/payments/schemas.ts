@@ -31,6 +31,16 @@ export const markManualPaymentSchema = z.object({
   currency: z.string().min(1).default('ARS'),
 });
 
+/** Editar período de un pago (inscripción ↔ cuota YYYY-MM, admin escuela). */
+export const updatePaymentPeriodSchema = z.object({
+  paymentId: z.string().min(1, 'paymentId requerido'),
+  schoolId: z.string().min(1, 'schoolId requerido'),
+  newPeriod: z.string().refine(
+    (v) => v === REGISTRATION_PERIOD || PERIOD_REGEX.test(v),
+    { message: 'newPeriod: inscripcion o YYYY-MM' }
+  ),
+});
+
 export const listPaymentsSchema = z.object({
   schoolId: z.string().min(1),
   filters: z.object({

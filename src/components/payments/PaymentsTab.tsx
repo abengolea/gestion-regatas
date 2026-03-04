@@ -33,7 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCollection } from "@/firebase";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Banknote } from "lucide-react";
+import { Banknote, Pencil } from "lucide-react";
 import type { Payment, Player } from "@/lib/types";
 
 /** Pago con nombre de jugador enriquecido por la API */
@@ -109,6 +109,10 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
   const [manualClothingInstallment, setManualClothingInstallment] = useState("1");
   const [manualAmount, setManualAmount] = useState("15000");
   const [manualSubmitting, setManualSubmitting] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editPayment, setEditPayment] = useState<PaymentWithPlayerName | null>(null);
+  const [editNewPeriod, setEditNewPeriod] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
   const [configRegistrationAmount, setConfigRegistrationAmount] = useState(0);
   const [configClothingAmount, setConfigClothingAmount] = useState(0);
   const [configClothingInstallments, setConfigClothingInstallments] = useState(2);
@@ -291,6 +295,56 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
     }
   };
 
+  const openEditDialog = (p: PaymentWithPlayerName) => {
+    setEditPayment(p);
+    setEditNewPeriod(p.period === REGISTRATION_PERIOD ? currentPeriod() : p.period);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditPayment = async () => {
+    if (!editPayment || !schoolId || !editNewPeriod) return;
+    if (editPayment.period === editNewPeriod) {
+      setEditDialogOpen(false);
+      return;
+    }
+    setEditSubmitting(true);
+    const token = await getToken();
+    if (!token) {
+      toast({ variant: "destructive", title: "No se pudo obtener sesión." });
+      setEditSubmitting(false);
+      return;
+    }
+    try {
+      const res = await fetch("/api/payments/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          paymentId: editPayment.id,
+          schoolId,
+          newPeriod: editNewPeriod,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error ?? "Error al actualizar");
+      }
+      toast({ title: "Pago actualizado correctamente." });
+      setEditDialogOpen(false);
+      setEditPayment(null);
+      fetchPayments();
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: e instanceof Error ? e.message : "Error al actualizar el pago",
+      });
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
   const now = new Date();
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
   const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).getTime();
@@ -429,12 +483,13 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
                 <TableHead className="text-xs sm:text-sm">Proveedor</TableHead>
                 <TableHead className="text-xs sm:text-sm">Estado</TableHead>
                 <TableHead className="text-xs sm:text-sm whitespace-nowrap">Fecha</TableHead>
+                <TableHead className="text-xs sm:text-sm w-[70px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {payments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No hay pagos para mostrar
                   </TableCell>
                 </TableRow>
@@ -472,6 +527,19 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
                         ? format(p.paidAt, "dd/MM/yyyy HH:mm", { locale: es })
                         : format(p.createdAt, "dd/MM/yyyy", { locale: es })}
                     </TableCell>
+                    <TableCell>
+                      {p.status === "approved" && !p.period.startsWith("ropa-") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => openEditDialog(p)}
+                          title="Editar período"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -479,6 +547,64 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
           </Table>
         </div>
       )}
+
+      <Dialog open={editDialogOpen} onOpenChange={(o) => { if (!o) setEditPayment(null); setEditDialogOpen(o); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar tipo de pago</DialogTitle>
+            <DialogDescription>
+              Cambiá el período/tipo del pago. Por ejemplo, si se cargó como inscripción pero era una cuota mensual (o viceversa).
+            </DialogDescription>
+          </DialogHeader>
+          {editPayment && (
+            <div className="grid gap-4 py-4">
+              <div>
+                <Label>Pago actual</Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {editPayment.playerName ?? editPayment.playerId} — {formatPeriodDisplay(editPayment.period)} — {editPayment.currency} {editPayment.amount.toLocaleString("es-AR")}
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="edit-period">Nuevo período</Label>
+                <Select value={editNewPeriod} onValueChange={setEditNewPeriod}>
+                  <SelectTrigger id="edit-period" className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={REGISTRATION_PERIOD}>Inscripción</SelectItem>
+                    {(() => {
+                      const years = getYears();
+                      const pm = editPayment.period.match(/^(\d{4})-(0[1-9]|1[0-2])$/);
+                      if (pm && !years.includes(parseInt(pm[1], 10))) {
+                        years.push(parseInt(pm[1], 10));
+                        years.sort((a, b) => b - a);
+                      }
+                      return years.flatMap((year) =>
+                        MONTHS.map((m) => {
+                          const val = `${year}-${m.value}`;
+                          return (
+                            <SelectItem key={val} value={val}>
+                              {formatPeriodDisplay(val)}
+                            </SelectItem>
+                          );
+                        })
+                      );
+                    })()}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleEditPayment} disabled={editSubmitting || !editPayment || editPayment.period === editNewPeriod}>
+              {editSubmitting ? "Guardando…" : "Guardar cambios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={manualOpen} onOpenChange={setManualOpen}>
         <DialogContent>

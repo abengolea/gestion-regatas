@@ -221,6 +221,59 @@ export async function playerExistsInSchool(
   return !archived;
 }
 
+/** Obtiene un pago por ID. Retorna null si no existe. */
+export async function getPaymentById(db: Firestore, paymentId: string): Promise<Payment | null> {
+  const ref = db.collection(COLLECTIONS.payments).doc(paymentId);
+  const snap = await ref.get();
+  if (!snap.exists) return null;
+  return toPayment(snap);
+}
+
+/** Verifica si existe otro pago aprobado para playerId+period (excluyendo paymentIdExclude). */
+export async function existsOtherApprovedPayment(
+  db: Firestore,
+  playerId: string,
+  period: string,
+  paymentIdExclude: string
+): Promise<boolean> {
+  const snap = await db
+    .collection(COLLECTIONS.payments)
+    .where('playerId', '==', playerId)
+    .where('period', '==', period)
+    .where('status', '==', 'approved')
+    .get();
+  return snap.docs.some((d) => d.id !== paymentIdExclude);
+}
+
+/** Actualiza el período (y paymentType) de un pago. Solo para corrección de errores (admin escuela). */
+export async function updatePaymentPeriod(
+  db: Firestore,
+  paymentId: string,
+  schoolId: string,
+  newPeriod: string
+): Promise<Payment | null> {
+  const payment = await getPaymentById(db, paymentId);
+  if (!payment || payment.schoolId !== schoolId) return null;
+  if (payment.status !== 'approved') return null;
+  if (payment.period === newPeriod) return payment; // No-op
+
+  const duplicate = await existsOtherApprovedPayment(db, payment.playerId, newPeriod, paymentId);
+  if (duplicate) return null;
+
+  const newPaymentType = isRegistrationPeriod(newPeriod) ? 'registration' : isClothingPeriod(newPeriod) ? 'clothing' : 'monthly';
+  const ref = db.collection(COLLECTIONS.payments).doc(paymentId);
+  const admin = await import('firebase-admin');
+  await ref.update({
+    period: newPeriod,
+    paymentType: newPaymentType,
+    metadata: {
+      ...(payment.metadata ?? {}),
+      periodEditedAt: admin.firestore.Timestamp.now(),
+    },
+  });
+  return getPaymentById(db, paymentId);
+}
+
 /** Busca pago aprobado por playerId + period (evitar duplicados) */
 export async function findApprovedPayment(
   db: Firestore,

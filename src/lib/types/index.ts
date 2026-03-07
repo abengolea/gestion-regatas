@@ -94,7 +94,7 @@ export interface Player {
   /** Mano predominante (lateralidad, opcional). */
   mano_dominante?: 'derecho' | 'izquierdo' | 'ambidiestro';
   /** Posición preferida en cancha. */
-  posicion_preferida?: 'arquero' | 'defensor' | 'lateral' | 'mediocampista' | 'delantero' | 'extremo' | 'base' | 'escolta' | 'ala' | 'ala_pivot' | 'pivot';
+  posicion_preferida?: 'arquero' | 'defensor' | 'lateral' | 'mediocampista' | 'delantero' | 'extremo';
   /** Categoría de entrenamiento: masculino o femenino. */
   genero?: 'masculino' | 'femenino';
   /** Número de camiseta (opcional). */
@@ -242,7 +242,7 @@ export interface Attendance {
 }
 
 /** Posición del jugador calificada por el entrenador. */
-export type PlayerPosition = 'arquero' | 'defensor' | 'lateral' | 'mediocampista' | 'delantero' | 'extremo' | 'base' | 'escolta' | 'ala' | 'ala_pivot' | 'pivot';
+export type PlayerPosition = 'arquero' | 'defensor' | 'lateral' | 'mediocampista' | 'delantero' | 'extremo';
 
 // Unifica todas las evaluaciones en un solo documento por fecha.
 export interface Evaluation {

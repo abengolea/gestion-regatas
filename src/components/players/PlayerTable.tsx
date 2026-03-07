@@ -32,7 +32,8 @@ import {
 import { useCollection, useUserProfile } from "@/firebase";
 import { Skeleton } from "../ui/skeleton";
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import { FileDown, CreditCard, CheckCircle } from "lucide-react";
+import { FileDown, CreditCard, CheckCircle, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 type DelinquentInfo = {
   playerId: string;
@@ -92,13 +93,9 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
     defensor: "Defensor",
     lateral: "Lateral",
     mediocampista: "Mediocampista",
+    mediocampo: "Mediocampista",
     delantero: "Delantero",
     extremo: "Extremo",
-    base: "Base",
-    escolta: "Escolta",
-    ala: "Ala",
-    ala_pivot: "Ala-pívot",
-    pivot: "Pívot",
   };
 
   const { data: players, loading, error } = useCollection<Player>(
@@ -106,6 +103,7 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
     { orderBy: ['lastName', 'asc'] }
   );
 
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [categoryFrom, setCategoryFrom] = useState<string>("");
   const [categoryTo, setCategoryTo] = useState<string>("");
@@ -115,7 +113,18 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
 
   const sortedAndFilteredPlayers = useMemo(() => {
     if (!activePlayers.length) return [];
-    const withCategory = activePlayers.map((p) => ({
+    let base = activePlayers;
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      base = base.filter(
+        (p) =>
+          (p.firstName ?? "").toLowerCase().includes(q) ||
+          (p.lastName ?? "").toLowerCase().includes(q) ||
+          `${(p.firstName ?? "")} ${(p.lastName ?? "")}`.toLowerCase().includes(q) ||
+          `${(p.lastName ?? "")} ${(p.firstName ?? "")}`.toLowerCase().includes(q)
+      );
+    }
+    const withCategory = base.map((p) => ({
       player: p,
       category: p.birthDate
         ? getBirthYearLabel(p.birthDate instanceof Date ? p.birthDate : new Date(p.birthDate))
@@ -155,7 +164,7 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
       const lnB = (b.player.lastName ?? "").toLowerCase();
       return lnA.localeCompare(lnB);
     });
-  }, [activePlayers, categoryFilter, categoryFrom, categoryTo, generoFilter]);
+  }, [activePlayers, categoryFilter, categoryFrom, categoryTo, generoFilter, searchQuery]);
 
   const handleExportCsv = () => {
     const cols = [
@@ -249,6 +258,17 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+        <div className="relative flex-1 min-w-[180px] max-w-[280px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            type="search"
+            placeholder="Buscar por nombre o apellido..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8"
+            autoComplete="off"
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <Label className="text-sm text-muted-foreground shrink-0">Género</Label>
           <Select value={generoFilter || "all"} onValueChange={(v) => setGeneroFilter(v === "all" ? "" : v)}>
@@ -314,7 +334,7 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
             </div>
           </>
         )}
-        {(generoFilter || categoryFilter || categoryFrom || categoryTo) && (
+        {(searchQuery || generoFilter || categoryFilter || categoryFrom || categoryTo) && (
           <span className="text-xs text-muted-foreground">
             {sortedAndFilteredPlayers.length} jugador{sortedAndFilteredPlayers.length !== 1 ? "es" : ""}
           </span>
@@ -348,7 +368,11 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
             {sortedAndFilteredPlayers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={colCount} className="text-center text-muted-foreground py-6">
-                  {categoryFrom || categoryTo ? "Ningún jugador en el rango de años seleccionado." : "Ningún jugador en la cat. año nac. seleccionada."}
+                  {searchQuery.trim()
+                    ? "No se encontraron jugadores con ese nombre o apellido."
+                    : categoryFrom || categoryTo
+                    ? "Ningún jugador en el rango de años seleccionado."
+                    : "Ningún jugador en la cat. año nac. seleccionada."}
                 </TableCell>
               </TableRow>
             ) : (

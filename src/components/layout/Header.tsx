@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth, useUser, useUserProfile, useCollection } from "@/firebase";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import Link from "next/link";
 import { isBirthdayToday } from "@/lib/utils";
@@ -26,18 +26,23 @@ export function Header() {
   const auth = useAuth();
   const router = useRouter();
   const { isReady, activeSchoolId, profile } = useUserProfile();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
-  // Solo staff (school_admin o coach) puede listar jugadores y pendingPlayers; nunca listar si es jugador.
+  // schoolId efectivo: perfil, URL (?schoolId=) o ruta (/dashboard/schools/[id])
+  const schoolIdFromUrl = searchParams.get("schoolId") ?? (pathname?.match(/^\/dashboard\/schools\/([^/]+)/)?.[1] ?? null);
+  const effectiveSchoolId = activeSchoolId ?? schoolIdFromUrl;
+  // Solo staff (school_admin o coach) puede listar jugadores; super admin usa schoolId de URL.
   const isStaff = profile?.role === "school_admin" || profile?.role === "coach";
-  const canListSchoolCollections = isReady && activeSchoolId && isStaff;
+  const canListSchoolCollections = isReady && effectiveSchoolId && isStaff;
   const { data: players } = useCollection<Player>(
-    canListSchoolCollections ? `schools/${activeSchoolId}/players` : "",
+    canListSchoolCollections ? `schools/${effectiveSchoolId}/players` : "",
     { orderBy: ["lastName", "asc"] }
   );
   const { data: pendingPlayers } = useCollection(
-    canListSchoolCollections ? `schools/${activeSchoolId}/pendingPlayers` : "",
+    canListSchoolCollections ? `schools/${effectiveSchoolId}/pendingPlayers` : "",
     {}
   );
   const { data: accessRequests } = useCollection(
@@ -75,7 +80,7 @@ export function Header() {
   const handleSelectPlayer = (playerId: string) => {
     setSearchQuery("");
     setSearchOpen(false);
-    router.push(`/dashboard/players/${playerId}?schoolId=${activeSchoolId}`);
+    router.push(`/dashboard/players/${playerId}?schoolId=${effectiveSchoolId}`);
   };
 
   const handleLogout = async () => {
@@ -89,7 +94,7 @@ export function Header() {
          <SidebarTrigger />
        </div>
       <div className="w-full flex-1 min-w-0" ref={searchRef}>
-        {isStaff && activeSchoolId && (
+        {isStaff && effectiveSchoolId && (
           <div className="relative md:w-2/3 lg:w-1/3">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
@@ -171,7 +176,7 @@ export function Header() {
             Novedades
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {!activeSchoolId ? (
+          {!effectiveSchoolId ? (
             <p className="px-2 py-3 text-sm text-muted-foreground">
               Selecciona una escuela para ver novedades.
             </p>
@@ -197,7 +202,7 @@ export function Header() {
               {birthdaysToday.map((player) => (
                 <DropdownMenuItem key={player.id} asChild>
                   <Link
-                    href={`/dashboard/players/${player.id}?schoolId=${activeSchoolId}`}
+                    href={`/dashboard/players/${player.id}?schoolId=${effectiveSchoolId}`}
                     className="flex items-center gap-2 py-2"
                   >
                     <Cake className="h-4 w-4 shrink-0 text-amber-500" />

@@ -54,17 +54,26 @@ const positionOptions: { value: PlayerPosition; label: string }[] = [
   { value: "mediocampista", label: "Mediocampista" },
   { value: "delantero", label: "Delantero" },
   { value: "extremo", label: "Extremo" },
-  { value: "base", label: "Base (legacy)" },
-  { value: "escolta", label: "Escolta (legacy)" },
-  { value: "ala", label: "Ala (legacy)" },
-  { value: "ala_pivot", label: "Ala-pívot (legacy)" },
-  { value: "pivot", label: "Pívot (legacy)" },
 ];
+
+/** Solo posiciones fútbol válidas. Legacy (básquet, mediocampo) se excluye al guardar. */
+function normalizePositionForEvaluation(p: string | undefined): PlayerPosition | undefined {
+  if (!p) return undefined;
+  if (p === "mediocampo") return "mediocampista";
+  if (["base", "escolta", "ala", "ala_pivot", "pivot"].includes(p)) return undefined;
+  return p as PlayerPosition;
+}
 
 const MAX_STARS = 10;
 
 const evaluationSchema = z.object({
-  position: z.enum(["arquero", "defensor", "lateral", "mediocampista", "delantero", "extremo", "base", "escolta", "ala", "ala_pivot", "pivot"]).optional(),
+  // Solo fútbol en UI. Aceptamos legacy (básquet, mediocampo) para cargar evaluaciones existentes.
+  position: z
+    .union([
+      z.enum(["arquero", "defensor", "lateral", "mediocampista", "mediocampo", "delantero", "extremo"]),
+      z.enum(["base", "escolta", "ala", "ala_pivot", "pivot"]),
+    ])
+    .optional(),
   // Validación de coachComments se hace manualmente en onSubmit (evita desincronía estado/DOM)
   coachComments: z.string().optional().default(""),
   /** Comentarios opcionales por rubro (key = nombre del campo, ej. control, pase). Valores pueden venir undefined si no se tocó el campo. */
@@ -283,8 +292,14 @@ export function AddEvaluationSheet({ playerId, schoolId, isOpen, onOpenChange, p
         }
 
         const { position, rubricComments, ...ratings } = values;
+        const normalizedPosition =
+          position && position !== "mediocampo" && !["base", "escolta", "ala", "ala_pivot", "pivot"].includes(position)
+            ? position
+            : position === "mediocampo"
+              ? "mediocampista"
+              : undefined;
         const payload = {
-            ...(position && { position }),
+            ...(normalizedPosition && { position: normalizedPosition }),
             coachComments,
             ...(Object.keys(rubricComments || {}).length > 0 && { rubricComments: rubricComments }),
             technical: {

@@ -34,13 +34,9 @@ const positionLabels: Record<string, string> = {
   defensor: "Defensor",
   lateral: "Lateral",
   mediocampista: "Mediocampista",
+  mediocampo: "Mediocampista",
   delantero: "Delantero",
   extremo: "Extremo",
-  base: "Base",
-  escolta: "Escolta",
-  ala: "Ala",
-  ala_pivot: "Ala-pívot",
-  pivot: "Pívot",
   mediocampo: "Mediocampo",
 };
 

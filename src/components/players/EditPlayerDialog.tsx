@@ -59,9 +59,23 @@ const playerSchema = z.object({
   altura_cm: z.union([z.number().min(80, "Mín. 80 cm").max(220, "Máx. 220 cm"), z.undefined()]).optional(),
   peso_kg: z.union([z.number().min(15, "Mín. 15 kg").max(150, "Máx. 150 kg"), z.undefined()]).optional(),
   mano_dominante: z.enum(["derecho", "izquierdo", "ambidiestro"]).optional(),
-  posicion_preferida: z.enum(["arquero", "defensor", "lateral", "mediocampista", "delantero", "extremo", "base", "escolta", "ala", "ala_pivot", "pivot"]).optional(),
+  // Solo fútbol. Aceptamos 'mediocampo' (legacy) y posiciones básquet (legacy) para cargar datos existentes.
+  posicion_preferida: z
+    .union([
+      z.enum(["arquero", "defensor", "lateral", "mediocampista", "mediocampo", "delantero", "extremo"]),
+      z.enum(["base", "escolta", "ala", "ala_pivot", "pivot"]),
+    ])
+    .optional(),
   genero: z.enum(["masculino", "femenino"]).optional(),
 });
+
+/** Normaliza posición: mediocampo→mediocampista, básquet→undefined (legacy). */
+function normalizePosicion(p: string | undefined): string | undefined {
+  if (!p) return undefined;
+  if (p === "mediocampo") return "mediocampista";
+  if (["base", "escolta", "ala", "ala_pivot", "pivot"].includes(p)) return undefined;
+  return p;
+}
 
 interface EditPlayerDialogProps {
   player: Player;
@@ -105,7 +119,7 @@ export function EditPlayerDialog({
       altura_cm: player.altura_cm ?? undefined,
       peso_kg: player.peso_kg ?? undefined,
       mano_dominante: (player.mano_dominante ?? (player as unknown as { pie_dominante?: "derecho" | "izquierdo" | "ambidiestro" }).pie_dominante) ?? undefined,
-      posicion_preferida: player.posicion_preferida ?? undefined,
+      posicion_preferida: normalizePosicion(player.posicion_preferida),
       genero: player.genero ?? undefined,
     },
   });
@@ -152,7 +166,7 @@ export function EditPlayerDialog({
         altura_cm: player.altura_cm ?? undefined,
         peso_kg: player.peso_kg ?? undefined,
         mano_dominante: (player.mano_dominante ?? (player as unknown as { pie_dominante?: "derecho" | "izquierdo" | "ambidiestro" }).pie_dominante) ?? undefined,
-        posicion_preferida: player.posicion_preferida ?? undefined,
+        posicion_preferida: normalizePosicion(player.posicion_preferida),
         genero: player.genero ?? undefined,
       });
     }
@@ -181,7 +195,12 @@ export function EditPlayerDialog({
       altura_cm: values.altura_cm ?? null,
       peso_kg: values.peso_kg ?? null,
       mano_dominante: values.mano_dominante ?? null,
-      posicion_preferida: values.posicion_preferida ?? null,
+      posicion_preferida: (() => {
+        const p = values.posicion_preferida;
+        if (!p) return null;
+        const normalized = normalizePosicion(p);
+        return normalized ?? null;
+      })(),
       genero: (values.genero && values.genero.trim()) ? values.genero : null,
     };
 
@@ -624,11 +643,6 @@ export function EditPlayerDialog({
                             <SelectItem value="mediocampista">Mediocampista</SelectItem>
                             <SelectItem value="delantero">Delantero</SelectItem>
                             <SelectItem value="extremo">Extremo</SelectItem>
-                            <SelectItem value="base" className="text-muted-foreground">Base (legacy)</SelectItem>
-                            <SelectItem value="escolta" className="text-muted-foreground">Escolta (legacy)</SelectItem>
-                            <SelectItem value="ala" className="text-muted-foreground">Ala (legacy)</SelectItem>
-                            <SelectItem value="ala_pivot" className="text-muted-foreground">Ala-pívot (legacy)</SelectItem>
-                            <SelectItem value="pivot" className="text-muted-foreground">Pívot (legacy)</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

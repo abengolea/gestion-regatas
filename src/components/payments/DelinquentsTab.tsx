@@ -34,8 +34,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { AlertCircle, ExternalLink, Download } from "lucide-react";
+import { AlertCircle, ExternalLink, Download, Mail } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { DelinquentInfo } from "@/lib/types";
+
+function delinquentKey(d: DelinquentInfo): string {
+  return `${d.playerId}:${d.period}`;
+}
 
 const REGISTRATION_PERIOD = "inscripcion";
 
@@ -81,6 +86,10 @@ export function DelinquentsTab({ schoolId, getToken }: DelinquentsTabProps) {
   const [manualDialog, setManualDialog] = useState<DelinquentInfo | null>(null);
   const [manualAmount, setManualAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [reminderStats, setReminderStats] = useState<{ sentToday: number; sentMonth: number; dailyLimit: number; remainingToday: number } | null>(null);
+  const [sendRemindersDialog, setSendRemindersDialog] = useState(false);
+  const [sendingReminders, setSendingReminders] = useState(false);
   const { toast } = useToast();
 
   const handleExportCsv = () => {
@@ -162,6 +171,108 @@ export function DelinquentsTab({ schoolId, getToken }: DelinquentsTabProps) {
   useEffect(() => {
     fetchDelinquents();
   }, [fetchDelinquents]);
+
+  const fetchReminderStats = useCallback(async () => {
+    if (!schoolId) return;
+    const token = await getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/payments/reminder-stats?schoolId=${schoolId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReminderStats(data);
+      }
+    } catch {
+      // silencioso
+    }
+  }, [schoolId, getToken]);
+
+  useEffect(() => {
+    if (!loading && delinquents.length > 0) fetchReminderStats();
+  }, [loading, delinquents.length, fetchReminderStats]);
+
+  /** Morosos con email que aún no recibieron recordatorio (se pueden seleccionar para enviar) */
+  const selectableForReminder = delinquents.filter(
+    (d) => d.playerEmail?.trim() && (d.reminderCount ?? 0) === 0
+  );
+  const selectableCount = selectableForReminder.length;
+  const selectedSelectableCount = selectableForReminder.filter((d) => selectedKeys.has(delinquentKey(d))).length;
+  const selectedWithEmailCount = selectedSelectableCount;
+  const isAllSelected = selectableCount > 0 && selectedSelectableCount === selectableCount;
+  const isIndeterminate = selectedSelectableCount > 0 && selectedSelectableCount < selectableCount;
+
+  const toggleSelect = (key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (isAllSelected || isIndeterminate) {
+      setSelectedKeys(new Set());
+    } else {
+      setSelectedKeys(new Set(selectableForReminder.map(delinquentKey)));
+    }
+  };
+
+  const handleSendReminders = async () => {
+    const token = await getToken();
+    if (!token) return;
+    const items = delinquents.filter((d) => selectedKeys.has(delinquentKey(d)));
+    if (items.length === 0) {
+      toast({ title: "Seleccioná al menos un moroso", variant: "destructive" });
+      return;
+    }
+    const withEmail = items.filter((d) => d.playerEmail?.trim());
+    if (withEmail.length === 0) {
+      toast({ title: "Ninguno de los seleccionados tiene email cargado", variant: "destructive" });
+      return;
+    }
+    setSendingReminders(true);
+    try {
+      const res = await fetch("/api/payments/send-reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          schoolId,
+          items: withEmail.map((d) => ({
+            playerId: d.playerId,
+            period: d.period,
+            playerEmail: d.playerEmail?.trim() || undefined,
+            playerName: d.playerName,
+            amount: d.amount,
+            currency: d.currency,
+          })),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast({ title: "Error", description: data.error ?? "No se pudieron enviar los recordatorios", variant: "destructive" });
+        return;
+      }
+      const sent = data.sent ?? 0;
+      const skipped = data.skipped ?? 0;
+      const noEmail = data.noEmail ?? 0;
+      const errs = data.errors ?? [];
+      setSendRemindersDialog(false);
+      setSelectedKeys(new Set());
+      fetchReminderStats();
+      fetchDelinquents();
+      const msg = errs.length > 0
+        ? `Enviados: ${sent}. Omitidos: ${skipped}. Sin email: ${noEmail}. Errores: ${errs.slice(0, 2).join("; ")}`
+        : `Se enviaron ${sent} recordatorios${skipped ? `. ${skipped} omitidos (ya enviados antes)` : ""}${noEmail ? `. ${noEmail} sin email` : ""}`;
+      toast({ title: "Recordatorios enviados", description: msg });
+    } catch (e) {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Error al enviar", variant: "destructive" });
+    } finally {
+      setSendingReminders(false);
+    }
+  };
 
   const handleCreateIntent = async (d: DelinquentInfo) => {
     const token = await getToken();
@@ -248,6 +359,20 @@ export function DelinquentsTab({ schoolId, getToken }: DelinquentsTabProps) {
           <Download className="mr-2 h-4 w-4" />
           Exportar CSV
         </Button>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => setSendRemindersDialog(true)}
+          disabled={loading || delinquents.length === 0 || selectedWithEmailCount === 0 || (reminderStats?.remainingToday ?? 0) <= 0}
+        >
+          <Mail className="mr-2 h-4 w-4" />
+          Enviar recordatorio masivo ({selectedWithEmailCount})
+        </Button>
+        {reminderStats && (
+          <span className="text-sm text-muted-foreground">
+            Hoy: {reminderStats.sentToday}/{reminderStats.dailyLimit} · Este mes: {reminderStats.sentMonth}
+          </span>
+        )}
         <Select
           value={conceptFilter || "all"}
           onValueChange={(v) => {
@@ -346,17 +471,38 @@ export function DelinquentsTab({ schoolId, getToken }: DelinquentsTabProps) {
           <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={isIndeterminate ? "indeterminate" : isAllSelected}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Seleccionar todos"
+                  />
+                </TableHead>
                 <TableHead className="text-xs sm:text-sm">Jugador</TableHead>
                 <TableHead className="text-xs sm:text-sm whitespace-nowrap">Período</TableHead>
                 <TableHead className="text-xs sm:text-sm whitespace-nowrap">Días mora</TableHead>
                 <TableHead className="text-xs sm:text-sm">Monto</TableHead>
+                <TableHead className="text-xs sm:text-sm whitespace-nowrap">Recordatorios</TableHead>
                 <TableHead className="text-xs sm:text-sm">Estado</TableHead>
                 <TableHead className="text-xs sm:text-sm text-right w-[120px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {delinquents.map((d) => (
+              {delinquents.map((d) => {
+                const key = delinquentKey(d);
+                const hasEmail = !!(d.playerEmail ?? "").trim();
+                const alreadySent = (d.reminderCount ?? 0) > 0;
+                const canSelect = hasEmail && !alreadySent;
+                return (
                 <TableRow key={`${d.playerId}-${d.period}`}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedKeys.has(key)}
+                      onCheckedChange={() => toggleSelect(key)}
+                      disabled={!canSelect}
+                      aria-label={`Seleccionar ${d.playerName}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div>
                       <p className="font-medium">{d.playerName}</p>
@@ -375,6 +521,20 @@ export function DelinquentsTab({ schoolId, getToken }: DelinquentsTabProps) {
                     {d.currency} {d.amount.toLocaleString("es-AR")}
                     {d.isProrated && (
                       <span className="ml-1 text-xs text-muted-foreground">(prorrata mes ingreso)</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {(d.reminderCount ?? 0) > 0 ? (
+                      <span title={d.lastReminderSentAt ? `Enviado: ${format(new Date(d.lastReminderSentAt), "dd/MM/yyyy HH:mm", { locale: es })}` : undefined}>
+                        {d.reminderCount} {d.reminderCount === 1 ? "enviado" : "enviados"}
+                        {d.lastReminderSentAt && (
+                          <span className="block text-xs text-muted-foreground">
+                            {format(new Date(d.lastReminderSentAt), "dd/MM/yy")}
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">0</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -405,11 +565,68 @@ export function DelinquentsTab({ schoolId, getToken }: DelinquentsTabProps) {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              );})}
             </TableBody>
           </Table>
         </div>
       )}
+
+      <Dialog open={sendRemindersDialog} onOpenChange={setSendRemindersDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar recordatorios masivos</DialogTitle>
+            <DialogDescription>
+              Se enviará un email a {selectedWithEmailCount} moroso(s) con recordatorio de pago e incluyendo link de pago.
+              Límite diario: {reminderStats?.sentToday ?? 0}/{reminderStats?.dailyLimit ?? 200}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendRemindersDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSendReminders} disabled={sendingReminders}>
+              {sendingReminders ? "Enviando…" : "Enviar recordatorios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sendRemindersDialog} onOpenChange={setSendRemindersDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar recordatorios de pago</DialogTitle>
+            <DialogDescription>
+              Se enviarán {selectedWithEmailCount} email(s) con recordatorio de pago y link de Mercado Pago.
+              Los morosos sin email no recibirán el recordatorio.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendRemindersDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSendReminders} disabled={sendingReminders}>
+              {sendingReminders ? "Enviando…" : "Confirmar envío"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sendRemindersDialog} onOpenChange={setSendRemindersDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar recordatorios de pago</DialogTitle>
+            <DialogDescription>
+              Se enviarán {selectedWithEmailCount} email(s) con recordatorio de pago y link para abonar. Los que no tienen email cargado no recibirán el correo.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendRemindersDialog(false)}>Cancelar</Button>
+            <Button onClick={handleSendReminders} disabled={sendingReminders}>
+              {sendingReminders ? "Enviando…" : "Enviar recordatorios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!manualDialog} onOpenChange={() => setManualDialog(null)}>
         <DialogContent>
@@ -438,6 +655,26 @@ export function DelinquentsTab({ schoolId, getToken }: DelinquentsTabProps) {
             </Button>
             <Button onClick={handleMarkManual} disabled={submitting}>
               {submitting ? "Guardando…" : "Registrar pago"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sendRemindersDialog} onOpenChange={setSendRemindersDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar recordatorios de pago</DialogTitle>
+            <DialogDescription>
+              Se enviarán {selectedWithEmailCount} email(s) con recordatorio de pago y link para pagar.
+              Los morosos sin email quedan excluidos.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendRemindersDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSendReminders} disabled={sendingReminders}>
+              {sendingReminders ? "Enviando…" : "Enviar recordatorios"}
             </Button>
           </DialogFooter>
         </DialogContent>

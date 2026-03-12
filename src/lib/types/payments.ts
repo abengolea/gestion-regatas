@@ -50,9 +50,10 @@ export interface PaymentIntent {
 }
 
 export type EmailEventType =
-  | 'payment_receipt'      // Pago aprobado → recibo
+  | 'payment_receipt'       // Pago aprobado → recibo
   | 'delinquency_10_days'  // Mora 10 días → aviso
-  | 'suspension_30_days';  // Mora 30 días → aviso suspensión
+  | 'suspension_30_days'   // Mora 30 días → aviso suspensión
+  | 'payment_reminder_manual'; // Recordatorio masivo manual con link de pago
 
 export interface EmailEvent {
   id: string;
@@ -132,4 +133,8 @@ export interface DelinquentInfo {
   isProrated?: boolean;
   /** true si el ítem pendiente es el derecho de inscripción */
   isRegistration?: boolean;
+  /** Cantidad de recordatorios enviados para este jugador+período (0 o 1 con idempotencia actual) */
+  reminderCount?: number;
+  /** Fecha del último recordatorio enviado (ISO string) */
+  lastReminderSentAt?: string;
 }

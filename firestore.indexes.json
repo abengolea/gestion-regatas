@@ -23,7 +23,8 @@
     {"collectionGroup":"payments","queryScope":"COLLECTION","fields":[{"fieldPath":"provider","order":"ASCENDING"},{"fieldPath":"providerPaymentId","order":"ASCENDING"}]},
     {"collectionGroup":"schoolFeePayments","queryScope":"COLLECTION","fields":[{"fieldPath":"schoolId","order":"ASCENDING"},{"fieldPath":"period","order":"ASCENDING"},{"fieldPath":"status","order":"ASCENDING"}]},
     {"collectionGroup":"schoolFeePayments","queryScope":"COLLECTION","fields":[{"fieldPath":"schoolId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]},
-    {"collectionGroup":"schoolFeePayments","queryScope":"COLLECTION","fields":[{"fieldPath":"provider","order":"ASCENDING"},{"fieldPath":"providerPaymentId","order":"ASCENDING"}]}
+    {"collectionGroup":"schoolFeePayments","queryScope":"COLLECTION","fields":[{"fieldPath":"provider","order":"ASCENDING"},{"fieldPath":"providerPaymentId","order":"ASCENDING"}]},
+    {"collectionGroup":"emailEvents","queryScope":"COLLECTION","fields":[{"fieldPath":"schoolId","order":"ASCENDING"},{"fieldPath":"type","order":"ASCENDING"},{"fieldPath":"sentAt","order":"ASCENDING"}]}
   ],
   "fieldOverrides": [
     {"collectionGroup":"users","fieldPath":"email","indexes":[{"order":"ASCENDING","queryScope":"COLLECTION_GROUP"}]},

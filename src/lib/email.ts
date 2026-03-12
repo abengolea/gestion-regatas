@@ -15,21 +15,31 @@ const HEADER_BG = "#0c0c0c";
 /** CID del logo como adjunto inline (compatible con clientes que bloquean data: URI). */
 const LOGO_CID = "logo@app";
 
+/** Ruta del logo en public (debe usarse con baseUrl para URLs absolutas en emails). */
+const LOGO_PATH = "/LogoRiverNuevo_1_2.png";
+
 /**
  * Genera HTML de correo con tipografía y estilo: cabecera,
- * logo (adjunto inline por CID) + nombre de la app.
+ * logo (URL absoluta, data URI o CID) + nombre de la app.
+ * logoUrl: URL absoluta del logo (recomendado para emails - Gmail/Outlook bloquean data:).
+ * useDataUri: embebe base64 (algunos clientes lo bloquean).
  */
 export function buildEmailHtml(
   contentHtml: string,
-  options?: { title?: string; greeting?: string; baseUrl?: string }
+  options?: { title?: string; greeting?: string; baseUrl?: string; useDataUri?: boolean; logoUrl?: string }
 ): string {
   const title = options?.title ?? "Escuelas River";
   const greeting = options?.greeting ?? "";
+  const logoSrc = options?.logoUrl
+    ? options.logoUrl
+    : options?.useDataUri
+      ? `data:image/png;base64,${EMAIL_LOGO_BASE64}`
+      : `cid:${LOGO_CID}`;
 
   const headerContent = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
         <tr>
           <td style="padding-right: 16px; vertical-align: middle;">
-            <img src="cid:${LOGO_CID}" alt="Logo" width="48" height="48" style="display: block; width: 48px; height: 48px; object-fit: contain;" />
+            <img src="${logoSrc}" alt="Logo" width="48" height="48" style="display: block; width: 48px; height: 48px; object-fit: contain;" />
           </td>
           <td style="vertical-align: middle;">
             <span style="color: #ffffff; font-weight: 700; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase;">ESCUELAS RIVER</span>

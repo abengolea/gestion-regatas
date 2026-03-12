@@ -15,6 +15,50 @@ export function idempotencyKey(type: EmailEventType, playerId: string, period: s
   return `${type}:${playerId}:${period}`;
 }
 
+export interface ReminderInfo {
+  count: number;
+  lastSentAt: Date;
+}
+
+/**
+ * Obtiene el conteo de recordatorios enviados por (playerId, period) para payment_reminder_manual.
+ * Sirve para mostrar en la tabla de morosos y evitar envíos duplicados.
+ */
+export async function getReminderCountsForDelinquents(
+  db: admin.firestore.Firestore,
+  schoolId: string,
+  items: { playerId: string; period: string }[]
+): Promise<Map<string, ReminderInfo>> {
+  const map = new Map<string, ReminderInfo>();
+  if (items.length === 0) return map;
+
+  const snap = await db
+    .collection(EMAIL_EVENTS_COLLECTION)
+    .where('schoolId', '==', schoolId)
+    .where('type', '==', 'payment_reminder_manual')
+    .get();
+
+  const keySet = new Set(items.map((i) => `${i.playerId}:${i.period}`));
+
+  for (const doc of snap.docs) {
+    const d = doc.data();
+    const playerId = d.playerId as string;
+    const period = d.period as string;
+    const key = `${playerId}:${period}`;
+    if (!keySet.has(key)) continue;
+
+    const sentAt = d.sentAt?.toDate?.() ?? new Date();
+    const existing = map.get(key);
+    if (existing) {
+      existing.count++;
+      if (sentAt > existing.lastSentAt) existing.lastSentAt = sentAt;
+    } else {
+      map.set(key, { count: 1, lastSentAt: sentAt });
+    }
+  }
+  return map;
+}
+
 /** Verifica si ya se envió un email para esta combinación (idempotencia) */
 export async function wasEmailSent(
   db: admin.firestore.Firestore,
@@ -76,6 +120,10 @@ export interface SendEmailEventParams {
   currency: string;
   /** Para payment_receipt: fecha del pago */
   paidAt?: Date;
+  /** Para payment_reminder_manual: link de pago Mercado Pago */
+  checkoutUrl?: string;
+  /** Nombre de la escuela (para personalizar el recordatorio) */
+  schoolName?: string;
 }
 
 /**
@@ -83,7 +131,7 @@ export interface SendEmailEventParams {
  * Solo envía si no existe registro previo con el mismo idempotencyKey.
  */
 export async function sendEmailEvent(params: SendEmailEventParams): Promise<boolean> {
-  const { db, type, playerId, schoolId, period, to, playerName, amount, currency, paidAt } = params;
+  const { db, type, playerId, schoolId, period, to, playerName, amount, currency, paidAt, checkoutUrl, schoolName } = params;
   const key = idempotencyKey(type, playerId, period);
 
   if (await wasEmailSent(db, key)) {
@@ -91,11 +139,22 @@ export async function sendEmailEvent(params: SendEmailEventParams): Promise<bool
   }
 
   const amountStr = `${currency} ${amount.toLocaleString('es-AR')}`;
+  const schoolNameSafe = schoolName ?? 'tu escuela';
 
   let subject: string;
   let contentHtml: string;
 
   switch (type) {
+    case 'payment_reminder_manual':
+      subject = `Recordatorio de pago - ${schoolNameSafe} - Escuelas River`;
+      contentHtml = `
+        <p>Hola ${escapeHtml(playerName)},</p>
+        <p>Te recordamos desde ${escapeHtml(schoolNameSafe)} que tenés pendiente el pago del período <strong>${escapeHtml(period)}</strong> (${amountStr}).</p>
+        <p>Por favor regularizá tu situación de pago lo antes posible.</p>
+        ${checkoutUrl ? `<p><a href="${escapeHtml(checkoutUrl)}" style="display:inline-block;background:#2563eb;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;margin:8px 0;">Pagar ahora</a></p>` : ''}
+        <p>Si ya realizaste el pago, ignorá este mensaje.</p>
+      `;
+      break;
     case 'payment_receipt':
       subject = `Recibo de pago - Cuota ${period} - Escuelas River`;
       contentHtml = `
@@ -124,13 +183,19 @@ export async function sendEmailEvent(params: SendEmailEventParams): Promise<bool
         <p>Si tenés dudas, contactá a la administración de tu escuela.</p>
       `;
       break;
-    default:
-      throw new Error(`Unknown email event type: ${type}`);
+    default: {
+      const _: never = type;
+      throw new Error(`Unknown email event type: ${String(_)}`);
+    }
   }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://escuelas-river.vercel.app";
+  const logoUrl = `${baseUrl.replace(/\/$/, "")}/LogoRiverNuevo_1_2.png`;
 
   const html = buildEmailHtml(contentHtml, {
     title: subject,
     greeting: `Estimado/a responsable de ${escapeHtml(playerName)}:`,
+    logoUrl, // URL absoluta: Gmail/Outlook bloquean data: URI y adjuntos CID pueden fallar con Trigger Email
   });
 
   await enqueueMail(db, { to, subject, html });

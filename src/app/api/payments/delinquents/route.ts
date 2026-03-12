@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { listDelinquentsSchema } from '@/lib/payments/schemas';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { computeDelinquents } from '@/lib/payments/db';
+import { getReminderCountsForDelinquents } from '@/lib/payments/email-events';
 import { verifyIdToken } from '@/lib/auth-server';
 
 export async function GET(request: Request) {
@@ -49,11 +50,19 @@ export async function GET(request: Request) {
       }
     }
 
+    const reminderMap = await getReminderCountsForDelinquents(db, parsed.data.schoolId, delinquents);
+
     return NextResponse.json({
-      delinquents: delinquents.map((d) => ({
-        ...d,
-        dueDate: d.dueDate.toISOString(),
-      })),
+      delinquents: delinquents.map((d) => {
+        const key = `${d.playerId}:${d.period}`;
+        const reminder = reminderMap.get(key);
+        return {
+          ...d,
+          dueDate: d.dueDate.toISOString(),
+          reminderCount: reminder?.count ?? 0,
+          ...(reminder?.lastSentAt && { lastReminderSentAt: reminder.lastSentAt.toISOString() }),
+        };
+      }),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

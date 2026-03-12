@@ -69,12 +69,14 @@ const playerSchema = z.object({
   genero: z.enum(["masculino", "femenino"]).optional(),
 });
 
+const POSICION_VALIDAS = ["arquero", "defensor", "lateral", "mediocampista", "mediocampo", "delantero", "extremo", "base", "escolta", "ala", "ala_pivot", "pivot"] as const;
+
 /** Normaliza posición: mediocampo→mediocampista, básquet→undefined (legacy). */
-function normalizePosicion(p: string | undefined): string | undefined {
+function normalizePosicion(p: string | undefined): (typeof POSICION_VALIDAS)[number] | undefined {
   if (!p) return undefined;
   if (p === "mediocampo") return "mediocampista";
   if (["base", "escolta", "ala", "ala_pivot", "pivot"].includes(p)) return undefined;
-  return p;
+  return POSICION_VALIDAS.includes(p as (typeof POSICION_VALIDAS)[number]) ? (p as (typeof POSICION_VALIDAS)[number]) : undefined;
 }
 
 interface EditPlayerDialogProps {

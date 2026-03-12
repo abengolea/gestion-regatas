@@ -68,6 +68,21 @@ export const listDelinquentsSchema = z.object({
   period: z.string().optional(),
 });
 
+/** Item para envío masivo de recordatorios */
+const sendReminderItemSchema = z.object({
+  playerId: z.string().min(1),
+  period: periodSchema,
+  playerEmail: z.string().email().optional().nullable(),
+  playerName: z.string().min(1),
+  amount: z.number().positive(),
+  currency: z.string().min(1).default('ARS'),
+});
+
+export const sendRemindersSchema = z.object({
+  schoolId: z.string().min(1),
+  items: z.array(sendReminderItemSchema).min(1).max(50, 'Máximo 50 envíos por lote'),
+});
+
 export const paymentConfigSchema = z.object({
   amount: z.number().positive('Monto debe ser positivo'),
   currency: z.string().min(1).default('ARS'),

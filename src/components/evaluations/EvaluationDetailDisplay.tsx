@@ -34,10 +34,9 @@ const positionLabels: Record<string, string> = {
   defensor: "Defensor",
   lateral: "Lateral",
   mediocampista: "Mediocampista",
-  mediocampo: "Mediocampista",
+  mediocampo: "Mediocampo",
   delantero: "Delantero",
   extremo: "Extremo",
-  mediocampo: "Mediocampo",
 };
 
 const skillLabels: Record<string, string> = {

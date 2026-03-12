@@ -33,7 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCollection } from "@/firebase";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Banknote, Pencil } from "lucide-react";
+import { Banknote, Pencil, Download } from "lucide-react";
 import type { Payment, Player } from "@/lib/types";
 
 /** Pago con nombre de jugador enriquecido por la API */
@@ -98,6 +98,7 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
+    concept: "" as "" | "inscripcion" | "monthly" | "clothing",
     period: "",
     status: "",
     provider: "",
@@ -121,6 +122,7 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
   >([]);
   const [clothingConfigured, setClothingConfigured] = useState(false);
   const [clothingPendingLoading, setClothingPendingLoading] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const { toast } = useToast();
 
   const { data: players } = useCollection<Player>(
@@ -152,7 +154,16 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
     const token = await getToken();
     if (!token) return;
     const params = new URLSearchParams({ schoolId });
-    if (filters.period) params.set("period", filters.period);
+    if (filters.concept === "inscripcion") {
+      params.set("concept", "inscripcion");
+    } else if (filters.concept === "monthly" && filters.period) {
+      params.set("concept", "monthly");
+      params.set("period", filters.period);
+    } else if (filters.concept === "clothing") {
+      params.set("concept", "clothing");
+    } else if (filters.period) {
+      params.set("period", filters.period);
+    }
     if (filters.status) params.set("status", filters.status);
     if (filters.provider) params.set("provider", filters.provider);
     try {
@@ -174,10 +185,15 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
       setTotal(data.total);
     } catch (e) {
       console.error(e);
+      toast({
+        variant: "destructive",
+        title: "Error al cargar pagos",
+        description: e instanceof Error ? e.message : "Revisá la consola para más detalles.",
+      });
     } finally {
       setLoading(false);
     }
-  }, [schoolId, filters.period, filters.status, filters.provider, getToken]);
+  }, [schoolId, filters.concept, filters.period, filters.status, filters.provider, getToken]);
 
   useEffect(() => {
     fetchPayments();
@@ -371,9 +387,94 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
     setFilters((f) => ({ ...f, period: `${year}-${month}` }));
   };
 
+  const handleExportCsv = async () => {
+    const token = await getToken();
+    if (!token) {
+      toast({ variant: "destructive", title: "No se pudo obtener sesión." });
+      return;
+    }
+    setExportingCsv(true);
+    try {
+      const params = new URLSearchParams({ schoolId, limit: "10000", offset: "0" });
+      if (filters.period) params.set("period", filters.period);
+      if (filters.status) params.set("status", filters.status);
+      if (filters.provider) params.set("provider", filters.provider);
+      if (filters.concept === "inscripcion") {
+        params.set("concept", "inscripcion");
+      } else if (filters.concept === "monthly" && filters.period) {
+        params.set("concept", "monthly");
+        params.set("period", filters.period);
+      } else if (filters.concept === "clothing") {
+        params.set("concept", "clothing");
+      }
+      const res = await fetch(`/api/payments?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail ?? data.error ?? "Error al exportar");
+      }
+      const data = await res.json();
+      const items: PaymentWithPlayerName[] = (data.payments ?? []).map(
+        (p: PaymentWithPlayerName & { paidAt?: string; createdAt?: string }) => ({
+          ...p,
+          paidAt: p.paidAt ? new Date(p.paidAt) : undefined,
+          createdAt: new Date(p.createdAt!),
+        })
+      );
+      const escape = (v: string | number | undefined) => {
+        if (v == null || v === "") return "";
+        const s = String(v);
+        return s.includes(",") || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const cols = ["Período", "Jugador", "Monto", "Moneda", "Proveedor", "Estado", "Fecha pago", "Fecha registro"];
+      const rows = items.map((p) => [
+        escape(formatPeriodDisplay(p.period)),
+        escape(p.playerName ?? p.playerId),
+        escape(p.amount),
+        escape(p.currency),
+        escape(
+          p.provider === "manual"
+            ? (p.metadata as { collectedByDisplayName?: string; collectedByEmail?: string } | undefined)
+                ?.collectedByDisplayName ||
+              (p.metadata as { collectedByEmail?: string } | undefined)?.collectedByEmail ||
+              "Manual"
+            : PROVIDER_LABELS[p.provider] ?? p.provider
+        ),
+        escape(STATUS_LABELS[p.status] ?? p.status),
+        escape(p.paidAt ? format(p.paidAt, "dd/MM/yyyy HH:mm", { locale: es }) : ""),
+        escape(p.createdAt ? format(p.createdAt, "dd/MM/yyyy HH:mm", { locale: es }) : ""),
+      ]);
+      const csv = [cols.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pagos-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Exportación completada", description: `${items.length} registros exportados.` });
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: e instanceof Error ? e.message : "Error al exportar",
+      });
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap gap-2 justify-end">
+        <Button
+          variant="outline"
+          onClick={handleExportCsv}
+          disabled={exportingCsv || loading}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          {exportingCsv ? "Exportando…" : "Exportar CSV"}
+        </Button>
         <Button
           onClick={() => setManualOpen(true)}
           className="bg-red-600 hover:bg-red-700 text-white"
@@ -403,6 +504,27 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={filters.concept || "all"}
+          onValueChange={(v) =>
+            setFilters((f) => ({
+              ...f,
+              concept: v === "all" ? "" : (v as "inscripcion" | "monthly" | "clothing"),
+              // No auto-seleccionar mes: dejar vacío para ver todos hasta que elijan mes explícitamente
+              period: v !== "monthly" ? "" : f.period,
+            }))
+          }
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Concepto" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los conceptos</SelectItem>
+            <SelectItem value="inscripcion">Inscripción</SelectItem>
+            <SelectItem value="monthly">Cuota mensual</SelectItem>
+            <SelectItem value="clothing">Ropa</SelectItem>
+          </SelectContent>
+        </Select>
         <Select
           value={filterMonth}
           onValueChange={(v) =>

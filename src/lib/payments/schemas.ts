@@ -41,6 +41,9 @@ export const updatePaymentPeriodSchema = z.object({
   ),
 });
 
+/** Filtro por concepto: inscripción, cuota mensual, ropa */
+export const conceptFilterSchema = z.enum(['inscripcion', 'monthly', 'clothing']).optional();
+
 export const listPaymentsSchema = z.object({
   schoolId: z.string().min(1),
   filters: z.object({
@@ -50,13 +53,19 @@ export const listPaymentsSchema = z.object({
     status: z.enum(['pending', 'approved', 'rejected', 'refunded']).optional(),
     period: periodSchema.optional(),
     provider: z.enum(['mercadopago', 'dlocal', 'manual']).optional(),
+    /** Filtro por concepto: inscripción, cuota mensual (usa period YYYY-MM), ropa */
+    concept: conceptFilterSchema,
   }).optional(),
-  limit: z.number().int().min(1).max(100).default(50),
+  limit: z.number().int().min(1).max(10000).default(50),
   offset: z.number().int().min(0).default(0),
 });
 
 export const listDelinquentsSchema = z.object({
   schoolId: z.string().min(1),
+  /** Filtro por concepto: inscripción, cuota mensual, ropa */
+  concept: conceptFilterSchema,
+  /** Subfiltro: YYYY-MM para cuota mensual, ropa-N para ropa (ej. ropa-1, ropa-2) */
+  period: z.string().optional(),
 });
 
 export const paymentConfigSchema = z.object({

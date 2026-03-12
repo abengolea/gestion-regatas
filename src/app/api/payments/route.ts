@@ -27,6 +27,7 @@ export async function GET(request: Request) {
         status: searchParams.get('status') ?? undefined,
         period: searchParams.get('period') ?? undefined,
         provider: searchParams.get('provider') ?? undefined,
+        concept: searchParams.get('concept') ?? undefined,
       },
       limit: searchParams.get('limit')
         ? parseInt(searchParams.get('limit')!, 10)
@@ -47,10 +48,11 @@ export async function GET(request: Request) {
     const db = getAdminFirestore();
 
     const archivedIds = await getArchivedPlayerIds(db, sid);
+    const requestedLimit = limit ?? 50;
     const { payments: rawPayments, total: rawTotal } = await listPayments(db, sid, {
       ...filters,
-      limit: 10000,
-      offset: 0,
+      limit: requestedLimit,
+      offset,
     });
     const paymentsFiltered = rawPayments.filter((p) => !archivedIds.has(p.playerId));
     const total = paymentsFiltered.length;

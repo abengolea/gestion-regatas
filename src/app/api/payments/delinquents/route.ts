@@ -18,7 +18,9 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
-    const parsed = listDelinquentsSchema.safeParse({ schoolId: schoolId ?? '' });
+    const concept = searchParams.get('concept') ?? undefined;
+    const period = searchParams.get('period') ?? undefined;
+    const parsed = listDelinquentsSchema.safeParse({ schoolId: schoolId ?? '', concept, period });
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -28,7 +30,24 @@ export async function GET(request: Request) {
     }
 
     const db = getAdminFirestore();
-    const delinquents = await computeDelinquents(db, parsed.data.schoolId);
+    let delinquents = await computeDelinquents(db, parsed.data.schoolId);
+
+    // Filtrar por concepto
+    const conceptFilter = parsed.data.concept;
+    const periodFilter = parsed.data.period;
+    if (conceptFilter === 'inscripcion') {
+      delinquents = delinquents.filter((d) => d.period === 'inscripcion');
+    } else if (conceptFilter === 'monthly') {
+      delinquents = delinquents.filter((d) => /^\d{4}-(0[1-9]|1[0-2])$/.test(d.period));
+      if (periodFilter && /^\d{4}-(0[1-9]|1[0-2])$/.test(periodFilter)) {
+        delinquents = delinquents.filter((d) => d.period === periodFilter);
+      }
+    } else if (conceptFilter === 'clothing') {
+      delinquents = delinquents.filter((d) => /^ropa-\d+$/.test(d.period));
+      if (periodFilter && /^ropa-\d+$/.test(periodFilter)) {
+        delinquents = delinquents.filter((d) => d.period === periodFilter);
+      }
+    }
 
     return NextResponse.json({
       delinquents: delinquents.map((d) => ({

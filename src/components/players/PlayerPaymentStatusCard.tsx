@@ -68,14 +68,21 @@ export function PlayerPaymentStatusCard({ getToken, playerId: propPlayerId, scho
         const playerDelinquents = (delBody.delinquents ?? []).filter(
           (d: DelinquentInfo) => d.playerId === propPlayerId
         );
-        setDelinquents(playerDelinquents);
 
         if (clothRes) {
           const clothBody = await clothRes.json().catch(() => ({}));
-          setClothingPending(clothBody.clothingPending ?? []);
+          const clothing = clothBody.clothingPending ?? [];
+          setClothingPending(clothing);
           if (clothBody.currency) setSuggestedCurrency(clothBody.currency);
+          // Excluir ropa de delinquents cuando clothing-pending las trae: evita duplicados.
+          const withoutRopa =
+            clothing.length > 0
+              ? playerDelinquents.filter((d: DelinquentInfo) => !d.period?.startsWith?.("ropa-"))
+              : playerDelinquents;
+          setDelinquents(withoutRopa);
         } else {
           setClothingPending([]);
+          setDelinquents(playerDelinquents);
         }
       } else {
         const res = await fetch("/api/payments/me", {
@@ -88,9 +95,15 @@ export function PlayerPaymentStatusCard({ getToken, playerId: propPlayerId, scho
           setClothingPending([]);
           return;
         }
-        setDelinquents(body.delinquent ? [body.delinquent] : []);
-        setClothingPending(body.clothingPending ?? []);
+        const clothing = body.clothingPending ?? [];
+        setClothingPending(clothing);
         setSuggestedCurrency(body.suggestedCurrency ?? "ARS");
+        const rawDelinquents = body.delinquent ? [body.delinquent] : [];
+        const withoutRopa =
+          clothing.length > 0
+            ? rawDelinquents.filter((d: DelinquentInfo) => !d.period?.startsWith?.("ropa-"))
+            : rawDelinquents;
+        setDelinquents(withoutRopa);
       }
       setError(null);
     } catch (e) {

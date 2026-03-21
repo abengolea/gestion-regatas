@@ -41,10 +41,10 @@ export function NotasAdminList({ token, profile, isSuperAdmin }: NotasAdminListP
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [schoolFilter, setSchoolFilter] = useState<string>("");
-  const [schools, setSchools] = useState<Array<{ schoolId: string; schoolName: string; schoolSlug: string }>>([]);
+  const [subcomisiones, setSchools] = useState<Array<{ subcomisionId: string; schoolName: string; subcomisionSlug: string }>>([]);
   const { toast } = useToast();
 
-  const canPublish = profile?.role === "school_admin" || isSuperAdmin;
+  const canPublish = profile?.role === "admin_subcomision" || isSuperAdmin;
 
   useEffect(() => {
     if (!token) return;
@@ -110,7 +110,7 @@ export function NotasAdminList({ token, profile, isSuperAdmin }: NotasAdminListP
   };
 
   const filteredPosts = schoolFilter
-    ? posts.filter((p) => p.schoolId === schoolFilter)
+    ? posts.filter((p) => (p.subcomisionId ?? (p as { schoolId?: string }).schoolId) === schoolFilter)
     : posts;
 
   if (loading) {
@@ -143,8 +143,8 @@ export function NotasAdminList({ token, profile, isSuperAdmin }: NotasAdminListP
             aria-label="Filtrar por escuela"
           >
             <option value="">Todas las escuelas</option>
-            {schools.map((s) => (
-              <option key={s.schoolId} value={s.schoolId}>
+            {subcomisiones.map((s: { subcomisionId: string; schoolName: string }) => (
+              <option key={s.subcomisionId} value={s.subcomisionId}>
                 {s.schoolName}
               </option>
             ))}
@@ -190,7 +190,7 @@ export function NotasAdminList({ token, profile, isSuperAdmin }: NotasAdminListP
                       {post.status === "published" && (
                         <Button variant="ghost" size="icon" asChild>
                           <a
-                            href={`/escuelas/${post.schoolSlug}/notas/${post.slug}`}
+                            href={`/escuelas/${post.subcomisionSlug}/notas/${post.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label="Ver nota publicada"

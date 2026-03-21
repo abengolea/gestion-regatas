@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const school = await getSchoolBySlug(schoolSlug);
   if (!school) return { title: "Escuela no encontrada" };
   return {
-    title: `Notas - ${school.name} | Escuelas River`,
+    title: `Notas - ${school.name} | Regatas+`,
     description: `Noticias, actividades y comunicados de ${school.name}`,
   };
 }

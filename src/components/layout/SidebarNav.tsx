@@ -20,9 +20,10 @@ import {
   Sliders,
   History,
   UserX,
-  Building2,
   Newspaper,
   Dumbbell,
+  Plane,
+  Store,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -37,29 +38,39 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
-import { RiverPlateLogo } from "../icons/RiverPlateLogo";
+import { EscudoCRSN } from "../icons/EscudoCRSN";
 import { useUserProfile, useCollection, useDoc, useFirebase } from "@/firebase";
 import { isPlayerProfileComplete } from "@/lib/utils";
-import type { Player } from "@/lib/types";
+import type { Socio } from "@/lib/types";
 import { isMedicalRecordApproved } from "@/lib/utils";
 import { getAuth } from "firebase/auth";
 // Orden por importancia: núcleo operativo → seguimiento → comunicación → administración
-const schoolUserMenuItems = [
+/** Menú para admin_subcomision: sin Evaluaciones Físicas, Asistencia ni Videoteca (solo para profesores). */
+const schoolUserMenuItemsAdmin = [
   { href: "/dashboard", label: "Panel Principal", icon: Home },
   { href: "/dashboard/players", label: "Jugadores", icon: Users },
-  { href: "/dashboard/attendance", label: "Asistencia", icon: ClipboardCheck },
   { href: "/dashboard/training-schedules", label: "Entrenamientos", icon: Dumbbell },
   { href: "/dashboard/medical-records", label: "Fichas médicas", icon: FileHeart },
   { href: "/dashboard/registrations", label: "Solicitudes", icon: UserCheck },
-  { href: "/dashboard/physical-assessments-config", label: "Evaluaciones Físicas", icon: Activity },
-  { href: "/dashboard/record-video", label: "Videoteca", icon: Video },
   { href: "/dashboard/support", label: "Centro de Soporte", icon: MessageCircle },
   { href: "/dashboard/notas", label: "Notas", icon: Newspaper },
 ];
 
+/** Menú para profesores: solo Evaluaciones Físicas además de lo básico. Sin Asistencia, Entrenamientos, Videoteca ni Centro de Soporte. */
+const schoolUserMenuItemsProfesor = [
+  { href: "/dashboard", label: "Panel Principal", icon: Home },
+  { href: "/dashboard/players", label: "Jugadores", icon: Users },
+  { href: "/dashboard/medical-records", label: "Fichas médicas", icon: FileHeart },
+  { href: "/dashboard/registrations", label: "Solicitudes", icon: UserCheck },
+  { href: "/dashboard/physical-assessments-config", label: "Evaluaciones Físicas", icon: Activity },
+  { href: "/dashboard/notas", label: "Notas", icon: Newspaper },
+];
+
 const superAdminMenuItems = [
-    { href: "/dashboard", label: "Escuelas", icon: Building },
-    { href: "/dashboard/admin/mensualidades", label: "Mensualidades", icon: Banknote },
+    { href: "/dashboard", label: "Panel del Gerente", icon: Home },
+    { href: "/dashboard?tab=subcomisiones", label: "Subcomisiones", icon: Building },
+    { href: "/dashboard?tab=socios", label: "Socios", icon: UserCheck },
+    { href: "/dashboard/admin/comercios", label: "Regatas+ Comercios", icon: Store },
     { href: "/dashboard/admin/physical-template", label: "Evaluaciones físicas (plantilla)", icon: Activity },
     { href: "/dashboard/support/operator", label: "Tickets de Soporte", icon: Headphones },
     { href: "/dashboard/admin/config", label: "Configuración global", icon: Sliders },
@@ -77,10 +88,10 @@ export function SidebarNav() {
   const { app } = useFirebase();
   const { isSuperAdmin, isReady, profile, activeSchoolId, isPlayer } = useUserProfile();
   const [hasPaymentOverdue, setHasPaymentOverdue] = useState(false);
-  const playerPath = profile?.role === "player" && profile?.activeSchoolId && profile?.playerId
-    ? `schools/${profile.activeSchoolId}/players/${profile.playerId}`
+  const playerPath = profile?.role === "player" && profile?.activeSchoolId && profile?.socioId
+    ? `subcomisiones/${profile.activeSchoolId}/socios/${profile.playerId ?? profile.socioId}`
     : "";
-  const { data: player } = useDoc<Player>(playerPath);
+  const { data: player } = useDoc<Socio>(playerPath);
   const playerProfileComplete = !player || isPlayerProfileComplete(player);
 
   const fetchPaymentOverdue = useCallback(async () => {
@@ -103,12 +114,12 @@ export function SidebarNav() {
   const closeMobileSidebar = React.useCallback(() => {
     if (isMobile) setOpenMobile(false);
   }, [isMobile, setOpenMobile]);
-  // Solo staff (school_admin o coach) puede listar pendingPlayers; nunca listar si es jugador.
-  const isStaff = profile?.role === "school_admin" || profile?.role === "coach";
+  // Solo staff (admin_subcomision o encargado_deportivo) puede listar pendingSocios; nunca listar si es jugador.
+  const isStaff = profile?.role === "admin_subcomision" || profile?.role === "encargado_deportivo";
   const canListSchoolCollections = isReady && activeSchoolId && isStaff;
 
-  const { data: allPlayers } = useCollection<Player>(
-    canListSchoolCollections ? `schools/${activeSchoolId}/players` : "",
+  const { data: allPlayers } = useCollection<Socio>(
+    canListSchoolCollections ? `subcomisiones/${activeSchoolId}/socios` : "",
     {}
   );
   const medicalRecordsPendingCount = React.useMemo(() => {
@@ -124,7 +135,7 @@ export function SidebarNav() {
     menuItems = superAdminMenuItems;
   } else if (profile?.role === 'player' && profile.activeSchoolId && profile.playerId) {
     // Jugador: si perfil incompleto "Mi perfil" + "Pagos"; si completo, panel, perfil, pagos y soporte
-    const profileHref = `/dashboard/players/${profile.playerId}?schoolId=${profile.activeSchoolId}`;
+    const profileHref = `/dashboard/players/${profile.playerId}?subcomisionId=${profile.activeSchoolId}`;
     if (!playerProfileComplete) {
       const tab = (t: string) => `${profileHref}&tab=${t}`;
       menuItems = [
@@ -146,29 +157,35 @@ export function SidebarNav() {
       ];
     }
   } else {
-    // Start with the base items for any school user (coach / school_admin)
-    menuItems = [...schoolUserMenuItems];
-    // Add Pagos, Mensajes y Gestionar Escuela solo para school_admin, en orden de importancia
-    if (profile?.role === 'school_admin' && profile.activeSchoolId) {
+    // Profesores: menú reducido sin Asistencia, Entrenamientos, Evaluaciones Físicas ni Videoteca
+    // Admin subcomisión: menú completo + Pagos, Viajes, Mensajes, Gestionar Subcomisión (sin Mensualidades)
+    const baseMenu = profile?.role === 'encargado_deportivo'
+      ? [...schoolUserMenuItemsProfesor]
+      : [...schoolUserMenuItemsAdmin];
+    menuItems = baseMenu;
+    if (profile?.role === 'admin_subcomision' && profile.activeSchoolId) {
       const pagos = { href: "/dashboard/payments", label: "Pagos", icon: Banknote };
-      const mensualidades = { href: "/dashboard/payments?tab=mensualidad", label: "Mensualidades", icon: Building2 };
+      const viajes = {
+        href: `/dashboard/subcomisiones/${profile.activeSchoolId}/viajes`,
+        label: "Viajes",
+        icon: Plane,
+      };
       const mensajes = { href: "/dashboard/messages", label: "Mensajes", icon: Mail };
       const gestionarEscuela = {
-        href: `/dashboard/schools/${profile.activeSchoolId}`,
-        label: "Gestionar Escuela",
+        href: `/dashboard/subcomisiones/${profile.activeSchoolId}`,
+        label: "Gestionar Subcomisión",
         icon: Shield
       };
-      const notas = { href: "/dashboard/notas", label: "Notas", icon: Newspaper };
-      const afterAttendance = 3;
       const baseWithoutNotas = menuItems.filter((i) => i.href !== "/dashboard/notas");
+      const afterAttendance = 3; // Después de Asistencia
       menuItems = [
         ...baseWithoutNotas.slice(0, afterAttendance),
         pagos,
-        mensualidades,
+        viajes,
         ...baseWithoutNotas.slice(afterAttendance),
         mensajes,
         gestionarEscuela,
-        notas
+        { href: "/dashboard/notas", label: "Notas", icon: Newspaper }
       ];
     }
   }
@@ -181,11 +198,11 @@ export function SidebarNav() {
   return (
     <>
       <SidebarHeader>
-        <Link href="/dashboard" className="flex items-center gap-2 p-2" onClick={closeMobileSidebar}>
-          <RiverPlateLogo className="h-8 w-8" />
+        <Link href="/" className="flex items-center gap-2 p-2" onClick={closeMobileSidebar}>
+          <EscudoCRSN size={32} className="shrink-0" />
           <span className="text-xl font-bold font-headline uppercase">
-            <span className="text-primary">ESCUELAS</span>{" "}
-            <span className="text-black dark:text-white">RIVER</span>
+            <span className="text-crsn-navy">REGATAS</span>
+            <span className="text-crsn-orange">+</span>
           </span>
         </Link>
       </SidebarHeader>
@@ -202,11 +219,13 @@ export function SidebarNav() {
                 <Link href={item.href} className="relative flex items-center" onClick={closeMobileSidebar}>
                     <SidebarMenuButton
                     isActive={
-                      item.href.includes("tab=mensualidad")
-                        ? pathname === "/dashboard/payments" && searchParams.get("tab") === "mensualidad"
-                        : item.href === "/dashboard/payments"
-                          ? pathname === "/dashboard/payments" && searchParams.get("tab") !== "mensualidad"
-                          : pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href.split("?")[0]))
+                      item.href === "/dashboard/payments"
+                        ? pathname === "/dashboard/payments"
+                        : item.href === "/dashboard"
+                        ? pathname === "/dashboard" && !searchParams.get("tab")
+                        : item.href.startsWith("/dashboard?tab=")
+                        ? pathname === "/dashboard" && searchParams.get("tab") === new URL(item.href, "http://x").searchParams.get("tab")
+                        : pathname === item.href || (item.href !== "/dashboard" && !item.href.startsWith("/dashboard?") && pathname.startsWith(item.href.split("?")[0]))
                     }
                     tooltip={item.label}
                     className="font-headline w-full"

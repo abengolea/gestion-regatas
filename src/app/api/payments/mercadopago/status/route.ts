@@ -1,5 +1,5 @@
 /**
- * GET /api/payments/mercadopago/status?schoolId=...
+ * GET /api/payments/mercadopago/status?subcomisionId=...
  * Devuelve si la escuela tiene Mercado Pago conectado (para mostrar estado en la UI).
  * No expone tokens.
  */

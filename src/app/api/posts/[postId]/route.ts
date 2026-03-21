@@ -25,7 +25,7 @@ export async function GET(
       return NextResponse.json({ error: "Nota no encontrada" }, { status: 404 });
     }
 
-    const can = await canUserManagePosts(auth.uid, post.schoolId, "view");
+    const can = await canUserManagePosts(auth.uid, post.subcomisionId, "view");
     if (!can) {
       return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
     }
@@ -57,7 +57,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Nota no encontrada" }, { status: 404 });
     }
 
-    const can = await canUserManagePosts(auth.uid, post.schoolId, "edit");
+    const can = await canUserManagePosts(auth.uid, post.subcomisionId, "edit");
     if (!can) {
       return NextResponse.json({ error: "Sin permiso para editar" }, { status: 403 });
     }

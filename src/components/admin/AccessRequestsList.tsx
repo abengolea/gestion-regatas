@@ -44,7 +44,7 @@ import {
   writeBatch,
   Timestamp,
 } from "firebase/firestore";
-import type { AccessRequest, Player } from "@/lib/types";
+import type { AccessRequest, Socio } from "@/lib/types";
 import { Skeleton } from "../ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Check, ChevronDown, Loader2, Search, UserPlus, X } from "lucide-react";
@@ -64,11 +64,11 @@ export function AccessRequestsList() {
     { where: ["status", "==", "pending"], limit: 50 }
   );
 
-  const { data: players } = useCollection<Player>(
-    isReady && activeSchoolId ? `schools/${activeSchoolId}/players` : "",
+  const { data: socios } = useCollection<Socio>(
+    isReady && activeSchoolId ? `subcomisiones/${activeSchoolId}/socios` : "",
     {}
   );
-  const activePlayers = (players ?? []).filter((p) => !p.archived);
+  const activeSocios = (socios ?? []).filter((p: Socio) => !p.archived);
 
   const [actionState, setActionState] = useState<ActionState>(null);
   const [playerSearch, setPlayerSearch] = useState("");
@@ -92,11 +92,11 @@ export function AccessRequestsList() {
 
     try {
       if (linkToPlayerId === "new") {
-        const playersRef = collection(firestore, `schools/${activeSchoolId}/players`);
+        const sociosRef = collection(firestore, `subcomisiones/${activeSchoolId}/socios`);
         const nameParts = (request.displayName || "").trim().split(/\s+/);
         const firstName = nameParts[0] || "Jugador";
         const lastName = nameParts.slice(1).join(" ") || "";
-        const newPlayerRef = await addDoc(playersRef, {
+        const newSocioRef = await addDoc(sociosRef, {
           firstName,
           lastName,
           birthDate: Timestamp.fromDate(new Date("2010-01-01")),
@@ -107,15 +107,15 @@ export function AccessRequestsList() {
           createdAt: Timestamp.now(),
           createdBy: profile.uid,
         });
-        await setDoc(doc(firestore, "playerLogins", emailNorm), {
-          schoolId: activeSchoolId,
-          playerId: newPlayerRef.id,
+        await setDoc(doc(firestore, "socioLogins", emailNorm), {
+          subcomisionId: activeSchoolId,
+          socioId: newSocioRef.id,
         });
         const batch = writeBatch(firestore);
         batch.update(doc(firestore, "accessRequests", request.id), {
           status: "approved",
           approvedSchoolId: activeSchoolId,
-          approvedPlayerId: newPlayerRef.id,
+          approvedPlayerId: newSocioRef.id,
           approvedAt: Timestamp.now(),
         });
         // Rechazar duplicados del mismo email para limpiar la base
@@ -135,11 +135,11 @@ export function AccessRequestsList() {
           description: `Se creó el jugador y ${request.email} ya puede iniciar sesión.`,
         });
       } else {
-        const playerRef = doc(firestore, `schools/${activeSchoolId}/players`, linkToPlayerId);
-        await updateDoc(playerRef, { email: emailNorm });
-        await setDoc(doc(firestore, "playerLogins", emailNorm), {
-          schoolId: activeSchoolId,
-          playerId: linkToPlayerId,
+        const socioRef = doc(firestore, `subcomisiones/${activeSchoolId}/socios`, linkToPlayerId);
+        await updateDoc(socioRef, { email: emailNorm });
+        await setDoc(doc(firestore, "socioLogins", emailNorm), {
+          subcomisionId: activeSchoolId,
+          socioId: linkToPlayerId,
         });
         const batch = writeBatch(firestore);
         batch.update(doc(firestore, "accessRequests", request.id), {
@@ -338,7 +338,7 @@ export function AccessRequestsList() {
                       {approveDialog.linkToPlayerId === "new"
                         ? "Crear nuevo jugador con este email"
                         : (() => {
-                            const sel = activePlayers.find((p) => p.id === approveDialog.linkToPlayerId);
+                            const sel = activeSocios.find((p) => p.id === approveDialog.linkToPlayerId);
                             return sel ? `${sel.firstName} ${sel.lastName}` : "Buscar jugador…";
                           })()}
                       <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -369,7 +369,7 @@ export function AccessRequestsList() {
                         </button>
                         {(() => {
                           const q = playerSearch.trim().toLowerCase();
-                          const filtered = activePlayers.filter((p) => {
+                          const filtered = activeSocios.filter((p) => {
                             if (!q) return true;
                             const full = `${(p.firstName || "").toLowerCase()} ${(p.lastName || "").toLowerCase()}`;
                             return full.includes(q) || full.split(/\s+/).some((w) => w.startsWith(q));

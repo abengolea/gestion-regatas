@@ -15,7 +15,7 @@ import { Activity, Check, Loader2, Zap, Dumbbell, Heart, Move, Target, FileText,
 import { useFirestore, useUserProfile, useDoc } from "@/firebase";
 import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 import { writeAuditLog } from "@/lib/audit";
-import type { School } from "@/lib/types";
+import type { Subcomision } from "@/lib/types";
 import type { PhysicalAssessmentTemplate } from "@/lib/types";
 import type { PhysicalAssessmentConfig } from "@/lib/types";
 import type { PhysicalAgeGroup, PhysicalFieldDef } from "@/lib/types";
@@ -72,10 +72,10 @@ function ensureUniqueKey(accepted: FieldDef[], key: string): string {
 }
 
 interface SuperAdminPhysicalTemplateTabProps {
-  schools: School[] | null;
+  subcomisiones: Subcomision[] | null;
 }
 
-export function SuperAdminPhysicalTemplateTab({ schools }: SuperAdminPhysicalTemplateTabProps) {
+export function SuperAdminPhysicalTemplateTab({ subcomisiones }: SuperAdminPhysicalTemplateTabProps) {
   const firestore = useFirestore();
   const { user } = useUserProfile();
   const { toast } = useToast();
@@ -92,20 +92,20 @@ export function SuperAdminPhysicalTemplateTab({ schools }: SuperAdminPhysicalTem
   const [savingTemplate, setSavingTemplate] = useState(false);
 
   useEffect(() => {
-    if (!schools?.length) {
+    if (!subcomisiones?.length) {
       setSchoolConfigs({});
       return;
     }
     setLoadingConfigs(true);
     Promise.all(
-      schools.map((s) =>
-        getDoc(doc(firestore, `schools/${s.id}/physicalAssessmentConfig`, "default"))
+      subcomisiones.map((s) =>
+        getDoc(doc(firestore, `subcomisiones/${s.id}/physicalAssessmentConfig`, "default"))
       )
     )
       .then((snaps) => {
         const map: Record<string, PhysicalAssessmentConfig & { id: string }> = {};
         snaps.forEach((snap, i) => {
-          const school = schools[i];
+          const school = subcomisiones[i];
           if (school && snap.exists()) {
             const d = snap.data();
             map[school.id] = {
@@ -121,7 +121,7 @@ export function SuperAdminPhysicalTemplateTab({ schools }: SuperAdminPhysicalTem
         setSchoolConfigs(map);
       })
       .finally(() => setLoadingConfigs(false));
-  }, [firestore, schools]);
+  }, [firestore, subcomisiones]);
 
   const acceptedByGroup = useMemo(
     () => template?.acceptedFieldsByAgeGroup ?? {},
@@ -129,8 +129,8 @@ export function SuperAdminPhysicalTemplateTab({ schools }: SuperAdminPhysicalTem
   );
 
   const proposals = useMemo(() => {
-    const list: { schoolId: string; schoolName: string; ageGroup: PhysicalAgeGroup; field: PhysicalFieldDef }[] = [];
-    if (!schools?.length) return list;
+    const list: { subcomisionId: string; schoolName: string; ageGroup: PhysicalAgeGroup; field: PhysicalFieldDef }[] = [];
+    if (!subcomisiones?.length) return list;
     const acceptedKeysByGroup: Record<PhysicalAgeGroup, Set<string>> = {
       "5-8": new Set((acceptedByGroup["5-8"] ?? []).map((f) => f.key)),
       "9-12": new Set((acceptedByGroup["9-12"] ?? []).map((f) => f.key)),
@@ -144,7 +144,7 @@ export function SuperAdminPhysicalTemplateTab({ schools }: SuperAdminPhysicalTem
       ])
     ) as Record<PhysicalAgeGroup, Set<string>>;
 
-    schools.forEach((school) => {
+    subcomisiones.forEach((school) => {
       const config = schoolConfigs[school.id];
       const custom = config?.customFieldsByAgeGroup ?? {};
       (AGE_GROUPS.map((a) => a.group) as PhysicalAgeGroup[]).forEach((ageGroup) => {
@@ -154,7 +154,7 @@ export function SuperAdminPhysicalTemplateTab({ schools }: SuperAdminPhysicalTem
           const alreadyAccepted = acceptedKeysByGroup[ageGroup]?.has(field.key);
           if (!alreadyInBase && !alreadyAccepted) {
             list.push({
-              schoolId: school.id,
+              subcomisionId: school.id,
               schoolName: school.name,
               ageGroup,
               field: { ...field, key: field.key, label: field.label, type: field.type },
@@ -164,7 +164,7 @@ export function SuperAdminPhysicalTemplateTab({ schools }: SuperAdminPhysicalTem
       });
     });
     return list;
-  }, [schools, schoolConfigs, acceptedByGroup]);
+  }, [subcomisiones, schoolConfigs, acceptedByGroup]);
 
   const handleAccept = async (
     ageGroup: PhysicalAgeGroup,
@@ -459,14 +459,14 @@ export function SuperAdminPhysicalTemplateTab({ schools }: SuperAdminPhysicalTem
             </p>
           ) : (
             <div className="space-y-3">
-              {proposals.map(({ schoolId, schoolName, ageGroup, field }) => {
+              {proposals.map(({ subcomisionId, schoolName, ageGroup, field }) => {
                 const compositeKey = `${ageGroup}:${field.key}:${schoolName}`;
                 const isAccepting = acceptingKey === compositeKey;
                 const ageLabel = AGE_GROUPS.find((a) => a.group === ageGroup)?.label ?? ageGroup;
                 const Icon = field.category ? CATEGORY_ICONS[field.category] : Activity;
                 return (
                   <div
-                    key={`${schoolId}-${ageGroup}-${field.key}`}
+                    key={`${subcomisionId}-${ageGroup}-${field.key}`}
                     className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3"
                   >
                     <div className="flex items-center gap-2 min-w-0">

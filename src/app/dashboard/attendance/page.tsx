@@ -55,7 +55,7 @@ export default function AttendancePage() {
           </p>
         </div>
       </div>
-      <AttendanceSheet schoolId={activeSchoolId} getToken={getToken} />
+      <AttendanceSheet subcomisionId={activeSchoolId} getToken={getToken} />
     </div>
   );
 }

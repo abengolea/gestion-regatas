@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FilePlus, FileDown, Sparkles, Loader2, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import type { Player, PhysicalAssessment, PhysicalAssessmentConfig } from "@/lib/types";
+import type { Socio, PhysicalAssessment, PhysicalAssessmentConfig } from "@/lib/types";
 import { useCollection, useDoc } from "@/firebase";
 import { AddPhysicalAssessmentSheet } from "./AddPhysicalAssessmentSheet";
 import { PhysicalAssessmentDetailDisplay } from "./PhysicalAssessmentDetailDisplay";
@@ -20,13 +20,16 @@ import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 
 interface PhysicalAssessmentsTabProps {
-  player: Player & { escuelaId: string };
-  schoolId: string;
+  player: Socio & { escuelaId: string };
+  subcomisionId?: string;
+  /** @deprecated Use subcomisionId */
+  schoolId?: string;
   /** Jugador viendo su perfil: no montar sheet (evita leer physicalAssessmentConfig) ni mostrar botones de crear/analizar. */
   isViewingAsPlayer?: boolean;
 }
 
-export function PhysicalAssessmentsTab({ player, schoolId, isViewingAsPlayer = false }: PhysicalAssessmentsTabProps) {
+export function PhysicalAssessmentsTab({ player, subcomisionId: subcomisionIdProp, schoolId, isViewingAsPlayer = false }: PhysicalAssessmentsTabProps) {
+  const subcomisionId = subcomisionIdProp ?? schoolId;
   const { toast } = useToast();
   const [isSheetOpen, setSheetOpen] = useState(false);
   const [editingAssessment, setEditingAssessment] = useState<PhysicalAssessment | null>(null);
@@ -35,15 +38,21 @@ export function PhysicalAssessmentsTab({ player, schoolId, isViewingAsPlayer = f
   const [loadingPDF, setLoadingPDF] = useState(false);
 
   const { data: assessments, loading: assessmentsLoading, error: assessmentsError } = useCollection<PhysicalAssessment>(
-    schoolId ? `schools/${schoolId}/physicalAssessments` : "",
-    { where: ["playerId", "==", player.id], orderBy: ["date", "desc"], limit: 50 }
+    subcomisionId ? `subcomisiones/${subcomisionId}/physicalAssessments` : "",
+    { where: ["socioId", "==", player.id], orderBy: ["date", "desc"], limit: 50 }
   );
   // Solo staff puede leer la config; un jugador viendo su perfil no tiene permiso.
   const { data: physicalConfig } = useDoc<PhysicalAssessmentConfig>(
-    schoolId && !isViewingAsPlayer ? `schools/${schoolId}/physicalAssessmentConfig/default` : ""
+    subcomisionId && !isViewingAsPlayer ? `subcomisiones/${subcomisionId}/physicalAssessmentConfig/default` : ""
   );
 
-  const birthDate = player.birthDate instanceof Date ? player.birthDate : new Date(player.birthDate);
+  const birthDate = player.birthDate
+    ? player.birthDate instanceof Date
+      ? player.birthDate
+      : typeof (player.birthDate as { toDate?: () => Date })?.toDate === "function"
+        ? (player.birthDate as { toDate: () => Date }).toDate()
+        : new Date(player.birthDate as string | number)
+    : new Date();
   const playerName = `${player.firstName ?? ""} ${player.lastName ?? ""}`.trim() || "Jugador";
 
   const handleGenerateInterpretive = async () => {
@@ -113,8 +122,8 @@ export function PhysicalAssessmentsTab({ player, schoolId, isViewingAsPlayer = f
     <>
       {!isViewingAsPlayer && (
         <AddPhysicalAssessmentSheet
-          playerId={player.id}
-          schoolId={schoolId}
+          socioId={player.id}
+          subcomisionId={subcomisionId!}
           birthDate={birthDate}
           playerName={playerName}
           isOpen={isSheetOpen}
@@ -229,7 +238,7 @@ export function PhysicalAssessmentsTab({ player, schoolId, isViewingAsPlayer = f
                     <AccordionContent>
                       <PhysicalAssessmentDetailDisplay
                         assessment={assessment}
-                        schoolId={schoolId}
+                        subcomisionId={subcomisionId!}
                         physicalConfig={physicalConfig}
                         onDeleted={() => {}}
                         onEditClick={(a) => {

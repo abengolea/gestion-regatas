@@ -6,7 +6,7 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 export interface CreatePlatformPreferenceParams {
-  schoolId: string;
+  subcomisionId: string;
   schoolName: string;
   period: string;
   amount: number;
@@ -48,13 +48,13 @@ export async function createPlatformFeePreference(
   const preferenceClient = new Preference(client);
 
   const notificationUrl = `${BASE_URL}/api/payments/webhook/mercadopago-platform`;
-  const externalReference = buildPlatformFeeExternalRef(params.schoolId, params.period);
+  const externalReference = buildPlatformFeeExternalRef(params.subcomisionId, params.period);
 
   const paymentsUrl = `${BASE_URL}/dashboard/payments`;
   const body = {
     items: [
       {
-        id: `school-fee-${params.period}-${params.schoolId}`,
+        id: `school-fee-${params.period}-${params.subcomisionId}`,
         title: `Mensualidad ${params.period} - ${params.schoolName}`,
         quantity: 1,
         unit_price: params.amount,
@@ -62,7 +62,7 @@ export async function createPlatformFeePreference(
       },
     ],
     back_urls: {
-      success: `${paymentsUrl}?tab=mensualidad&schoolFee=success`,
+      success: `${paymentsUrl}?tab=mensualidad&clubFee=success`,
       failure: `${paymentsUrl}?tab=mensualidad&schoolFee=failure`,
       pending: `${paymentsUrl}?tab=mensualidad&schoolFee=pending`,
     },

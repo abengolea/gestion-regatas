@@ -57,7 +57,7 @@ export default function DeleteTestUsersPage() {
   };
 
   const usersDeletable = (platformUsers ?? []).filter(
-    (u) => u.id !== currentUser?.uid && !u.super_admin
+    (u) => u.id !== currentUser?.uid && !u.gerente_club
   );
 
   const toggleUser = (id: string) => {
@@ -140,7 +140,7 @@ export default function DeleteTestUsersPage() {
           Borrar usuarios de prueba
         </h1>
         <p className="text-muted-foreground">
-          Elimina usuarios y todas sus referencias (Auth, platformUsers, escuelas, playerLogins,
+          Elimina usuarios y todas sus referencias (Auth, platformUsers, escuelas, socioLogins,
           solicitudes, verificación de email) para poder volver a probar flujos de registro.
         </p>
       </div>

@@ -29,14 +29,14 @@ function formatPeriodDisplay(period: string): string {
   return format(date, "MMMM yyyy", { locale: es });
 }
 
-interface SchoolAdminMensualidadViewProps {
-  schoolId: string;
+interface SubcomisionAdminMensualidadViewProps {
+  subcomisionId: string;
   getToken: () => Promise<string | null>;
   /** Cuando cambia (ej. "success" al volver de MP), se refresca la lista */
   refreshTrigger?: string | null;
 }
 
-export function SchoolAdminMensualidadView({ schoolId, getToken, refreshTrigger }: SchoolAdminMensualidadViewProps) {
+export function SchoolAdminMensualidadView({ subcomisionId, getToken, refreshTrigger }: SubcomisionAdminMensualidadViewProps) {
   const [status, setStatus] = useState<{
     isBonified: boolean;
     inDebt: boolean;
@@ -57,10 +57,10 @@ export function SchoolAdminMensualidadView({ schoolId, getToken, refreshTrigger 
     setLoading(true);
     try {
       const [statusRes, paymentsRes] = await Promise.all([
-        fetch(`/api/platform-fee/my-status?schoolId=${schoolId}`, {
+        fetch(`/api/platform-fee/my-status?schoolId=${subcomisionId}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`/api/platform-fee/my-payments?schoolId=${schoolId}`, {
+        fetch(`/api/platform-fee/my-payments?schoolId=${subcomisionId}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -78,7 +78,7 @@ export function SchoolAdminMensualidadView({ schoolId, getToken, refreshTrigger 
     } finally {
       setLoading(false);
     }
-  }, [schoolId, getToken, toast]);
+  }, [subcomisionId, getToken, toast]);
 
   useEffect(() => {
     fetchData();
@@ -100,7 +100,7 @@ export function SchoolAdminMensualidadView({ schoolId, getToken, refreshTrigger 
         const res = await fetch("/api/platform-fee/payment-link", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ schoolId, period }),
+          body: JSON.stringify({ subcomisionId, period }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -130,7 +130,7 @@ export function SchoolAdminMensualidadView({ schoolId, getToken, refreshTrigger 
         setPaying(null);
       }
     },
-    [schoolId, getToken, toast, fetchData]
+    [subcomisionId, getToken, toast, fetchData]
   );
 
   if (loading) {

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
 import { PlayerTable } from "@/components/players/PlayerTable";
+import { BulkImportPlayersSheet } from "@/components/players/BulkImportPlayersSheet";
 import Link from "next/link";
 import { useUserProfile } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,12 +20,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function PlayersPage() {
   const router = useRouter();
   const { profile, isReady, activeSchoolId } = useUserProfile();
-  const playerId = profile?.playerId;
+  const playerId = profile?.socioId ?? profile?.playerId;
 
   useEffect(() => {
     if (!isReady) return;
     if (profile?.role === "player" && activeSchoolId && playerId) {
-      router.replace(`/dashboard/players/${playerId}?schoolId=${activeSchoolId}`);
+      router.replace(`/dashboard/players/${playerId}?subcomisionId=${activeSchoolId}`);
     }
   }, [isReady, profile?.role, activeSchoolId, playerId, router]);
 
@@ -40,12 +41,15 @@ export default function PlayersPage() {
     <div className="flex flex-col gap-4 min-w-0">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight font-headline sm:text-3xl">Jugadores</h1>
-        <Button asChild className="w-full sm:w-auto">
-          <Link href="/dashboard/players/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Añadir Jugador
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <BulkImportPlayersSheet />
+          <Button asChild className="w-full sm:w-auto">
+            <Link href="/dashboard/players/new">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Añadir Jugador
+            </Link>
+          </Button>
+        </div>
       </div>
       <Card>
         <CardHeader className="pb-2">

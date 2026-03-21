@@ -36,10 +36,10 @@ Módulo implementado para que el administrador de cada escuela controle cuotas d
 - `functions/src/index.ts` - enforceDelinquencyAndSuspensions: job diario (9:00 Argentina)
 
 ### Archivos modificados
-- `src/lib/types/index.ts` - Player.status incluye 'suspended', re-export payments
-- `src/components/players/EditPlayerDialog.tsx` - status 'suspended' en schema y select
+- `src/lib/types/index.ts` - Socio.status incluye 'suspended', re-export payments
+- `src/components/socios/EditPlayerDialog.tsx` - status 'suspended' en schema y select
 - `src/components/players/PlayerTable.tsx` - Badge "Suspendido por mora"
-- `src/components/layout/SidebarNav.tsx` - Link "Pagos" para school_admin
+- `src/components/layout/SidebarNav.tsx` - Link "Pagos" para admin_subcomision
 - `firestore.rules` - Reglas para payments, paymentIntents, emailEvents, paymentConfig
 - `firestore.indexes.json` - Índices para consultas de pagos
 - `firebase.json` - Configuración de functions
@@ -55,8 +55,8 @@ curl -X POST http://localhost:9002/api/payments/webhook \
     "provider": "mercadopago",
     "providerPaymentId": "test-123",
     "status": "approved",
-    "playerId": "<playerId>",
-    "schoolId": "<schoolId>",
+    "socioId": "<playerId>",
+    "subcomisionId": "<schoolId>",
     "period": "2025-02",
     "amount": 5000,
     "currency": "ARS"
@@ -108,4 +108,4 @@ firebase emulators:start --only functions
 
 - **MercadoPago/DLocal**: Integrar SDK real con credenciales (MERCADOPAGO_ACCESS_TOKEN, etc.)
 - **Webhook**: Validar firma del payload según documentación de cada proveedor
-- **Auth en API**: Verificar que el uid sea admin de la escuela (isSchoolAdmin) en rutas que lo requieren
+- **Auth en API**: Verificar que el uid sea admin de la escuela (isSubcomisionAdmin) en rutas que lo requieren

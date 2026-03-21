@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -25,37 +25,79 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "../ui/button";
-import { Building, MoreHorizontal, Power, PowerOff, Loader2, Users, ShieldCheck, Edit, BarChart3 } from "lucide-react";
+import { Building, MoreHorizontal, Power, PowerOff, Loader2, Users, ShieldCheck, Edit, BarChart3, UserCheck } from "lucide-react";
 import { useCollection, useFirestore, useUserProfile } from "@/firebase";
+import { useSubcomisionesList } from "@/hooks/use-subcomisiones-list";
+import { collectionGroup, getDocs } from "firebase/firestore";
 import { doc, updateDoc } from "firebase/firestore";
 import { writeAuditLog } from "@/lib/audit";
-import type { School, PlatformUser } from "@/lib/types";
+import type { Subcomision, SubcomisionUser, PlatformUser } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
 import { Badge } from "../ui/badge";
-import { CreateSchoolDialog } from "./CreateSchoolDialog";
+import { CreateSubcomisionDialog } from "./CreateSchoolDialog";
 import { useToast } from "@/hooks/use-toast";
-import { EditSchoolDialog } from "./EditSchoolDialog";
+import { EditSubcomisionDialog } from "./EditSchoolDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlatformUsersList } from "./PlatformUsersList";
 import { SuperAdminReportsTab } from "./SuperAdminReportsTab";
+import { SuperAdminSociosTab } from "./SuperAdminSociosTab";
+
+const VALID_TABS = ["schools", "socios", "users", "reports"] as const;
+const TAB_FROM_URL: Record<string, (typeof VALID_TABS)[number]> = {
+  subcomisiones: "schools",
+  socios: "socios",
+  usuarios: "users",
+  users: "users",
+  reportes: "reports",
+  reports: "reports",
+};
 
 export function SuperAdminDashboard() {
-    const { data: schools, loading: schoolsLoading } = useCollection<School>('schools', { orderBy: ['createdAt', 'desc']});
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const tabFromUrl = searchParams.get("tab");
+    const activeTab = TAB_FROM_URL[tabFromUrl ?? ""] ?? "schools";
+    const { data: subcomisiones, loading: schoolsLoading } = useSubcomisionesList();
+    const schools = subcomisiones;
     const { data: platformUsers, loading: usersLoading } = useCollection<PlatformUser>('platformUsers');
     const firestore = useFirestore();
+    const [adminsBySubcomision, setAdminsBySubcomision] = useState<Map<string, { displayName: string; email: string }>>(new Map());
+
+    useEffect(() => {
+        if (!firestore) return;
+        const load = async () => {
+            try {
+                const snap = await getDocs(collectionGroup(firestore, 'users'));
+                const map = new Map<string, { displayName: string; email: string }>();
+                snap.docs.forEach((d) => {
+                    const data = d.data() as SubcomisionUser;
+                    if (data.role !== 'admin_subcomision') return;
+                    const subcomisionId = d.ref.parent.parent?.id;
+                    if (!subcomisionId) return;
+                    map.set(subcomisionId, {
+                        displayName: data.displayName ?? '',
+                        email: data.email ?? '',
+                    });
+                });
+                setAdminsBySubcomision(map);
+            } catch {
+                setAdminsBySubcomision(new Map());
+            }
+        };
+        load();
+    }, [firestore]);
     const { user } = useUserProfile();
-    const router = useRouter();
     const { toast } = useToast();
     const [updatingSchoolId, setUpdatingSchoolId] = useState<string | null>(null);
 
     const isLoading = schoolsLoading || usersLoading;
 
-    const handleStatusChange = async (schoolId: string, currentStatus: 'active' | 'suspended') => {
-        setUpdatingSchoolId(schoolId);
+    const handleStatusChange = async (subcomisionId: string, currentStatus: 'active' | 'suspended') => {
+        setUpdatingSchoolId(subcomisionId);
         const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-        const schoolRef = doc(firestore, 'schools', schoolId);
+        const schoolRef = doc(firestore, 'subcomisiones', subcomisionId);
 
         try {
             await updateDoc(schoolRef, { status: newStatus });
@@ -63,20 +105,20 @@ export function SuperAdminDashboard() {
               await writeAuditLog(firestore, user.email, user.uid, {
                 action: "school.status_change",
                 resourceType: "school",
-                resourceId: schoolId,
-                schoolId,
+                resourceId: subcomisionId,
+                subcomisionId,
                 details: newStatus,
               });
             }
             toast({
                 title: "Estado actualizado",
-                description: `La escuela ha sido ${newStatus === 'active' ? 'activada' : 'suspendida'}.`,
+                description: `La subcomisión ha sido ${newStatus === 'active' ? 'activada' : 'suspendida'}.`,
             });
         } catch (error) {
             toast({
                 variant: "destructive",
                 title: "Error al actualizar",
-                description: "No se pudo cambiar el estado de la escuela.",
+                description: "No se pudo cambiar el estado de la subcomisión.",
             });
         } finally {
             setUpdatingSchoolId(null);
@@ -87,18 +129,18 @@ export function SuperAdminDashboard() {
         <div className="flex flex-col gap-4 min-w-0">
             <div className="flex items-center justify-between space-y-2">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight font-headline">Panel de Super Administrador</h1>
-                    <p className="text-muted-foreground">Gestiona todas las escuelas y usuarios de la plataforma.</p>
+                    <h1 className="text-3xl font-bold tracking-tight font-headline">Panel de Gerente del Clubistrador</h1>
+                    <p className="text-muted-foreground">Gestiona las subcomisiones y sus responsables.</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                    <CreateSchoolDialog />
+                    <CreateSubcomisionDialog />
                 </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Escuelas Totales</CardTitle>
+                        <CardTitle className="text-sm font-medium">Subcomisiones</CardTitle>
                         <Building className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -126,7 +168,7 @@ export function SuperAdminDashboard() {
                         <ShieldCheck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        {isLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{platformUsers?.filter(u => u.super_admin).length || 0}</div>}
+                        {isLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{platformUsers?.filter(u => u.gerente_club).length || 0}</div>}
                          <div className="text-xs text-muted-foreground">
                             {isLoading ? <Skeleton className="h-4 w-1/2 mt-1" /> : `Con acceso total al sistema`}
                         </div>
@@ -134,11 +176,22 @@ export function SuperAdminDashboard() {
                 </Card>
             </div>
 
-             <Tabs defaultValue="schools" className="w-full">
-                <TabsList className="w-full grid grid-cols-3 gap-1 p-1 h-auto md:h-10 bg-card">
+             <Tabs
+                value={activeTab}
+                onValueChange={(v) => {
+                  const tabParam = v === "schools" ? "subcomisiones" : v;
+                  router.push(`/dashboard?tab=${tabParam}`);
+                }}
+                className="w-full"
+              >
+                <TabsList className="w-full grid grid-cols-4 gap-1 p-1 h-auto md:h-10 bg-card">
                     <TabsTrigger value="schools" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 md:gap-2">
                         <Building className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-                        <span className="truncate">Escuelas</span>
+                        <span className="truncate">Subcomisiones</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="socios" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 md:gap-2">
+                        <UserCheck className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                        <span className="truncate">Socios</span>
                     </TabsTrigger>
                     <TabsTrigger value="users" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 md:gap-2">
                         <Users className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
@@ -154,10 +207,10 @@ export function SuperAdminDashboard() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                                 <Building className="h-5 w-5" />
-                                Listado de Escuelas
+                                Listado de Subcomisiones
                             </CardTitle>
                             <CardDescription>
-                                {schoolsLoading ? 'Cargando listado de escuelas...' : `Haz click en una para gestionarla.`}
+                                {schoolsLoading ? 'Cargando listado...' : `Haz click en una para gestionarla.`}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="p-0 sm:p-6">
@@ -165,8 +218,8 @@ export function SuperAdminDashboard() {
                                 <Table className="min-w-[560px]">
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="text-xs sm:text-sm">Nombre de la Escuela</TableHead>
-                                            <TableHead className="text-xs sm:text-sm whitespace-nowrap">Ubicación</TableHead>
+                                            <TableHead className="text-xs sm:text-sm">Nombre</TableHead>
+                                            <TableHead className="text-xs sm:text-sm whitespace-nowrap">Responsable</TableHead>
                                             <TableHead className="text-xs sm:text-sm">Estado</TableHead>
                                             <TableHead className="text-xs sm:text-sm whitespace-nowrap">Fecha de Creación</TableHead>
                                             <TableHead className="text-right w-[80px]">Acciones</TableHead>
@@ -176,7 +229,7 @@ export function SuperAdminDashboard() {
                                     {schoolsLoading && [...Array(3)].map((_, i) => (
                                         <TableRow key={i}>
                                             <TableCell><Skeleton className="h-6 w-48" /></TableCell>
-                                            <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                                            <TableCell><Skeleton className="h-6 w-36" /></TableCell>
                                             <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                                             <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                                             <TableCell><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
@@ -187,7 +240,19 @@ export function SuperAdminDashboard() {
                                             <TableCell className="font-medium">
                                                 {school.name}
                                             </TableCell>
-                                            <TableCell>{school.city}, {school.province}</TableCell>
+                                            <TableCell>
+                                                {(() => {
+                                                    const admin = adminsBySubcomision.get(school.id);
+                                                    return admin ? (
+                                                        <span className="block">
+                                                            <span className="font-medium">{admin.displayName}</span>
+                                                            <span className="text-muted-foreground text-xs block">{admin.email}</span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-sm">—</span>
+                                                    );
+                                                })()}
+                                            </TableCell>
                                             <TableCell>
                                                 <Badge
                                                     variant={school.status === 'active' ? 'secondary' : 'destructive'}
@@ -207,12 +272,12 @@ export function SuperAdminDashboard() {
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                                                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                        <EditSchoolDialog school={school}>
+                                                        <EditSubcomisionDialog school={school}>
                                                             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                                                                 <Edit className="mr-2 h-4 w-4" />
                                                                 <span>Editar Datos</span>
                                                             </DropdownMenuItem>
-                                                        </EditSchoolDialog>
+                                                        </EditSubcomisionDialog>
                                                         <DropdownMenuItem
                                                             onClick={(e) => {
                                                                 handleStatusChange(school.id, school.status);
@@ -237,14 +302,20 @@ export function SuperAdminDashboard() {
                             </Table>
                             </div>
                             {(!schoolsLoading && !schools?.length) && (
-                                <p className="text-center text-muted-foreground py-8">No hay escuelas para mostrar.</p>
+                                <p className="text-center text-muted-foreground py-8">No hay subcomisiones para mostrar.</p>
                             )}
                         </CardContent>
                     </Card>
                 </TabsContent>
+                <TabsContent value="socios">
+                    <SuperAdminSociosTab
+                        subcomisiones={schools ?? null}
+                        subcomisionesLoading={schoolsLoading}
+                    />
+                </TabsContent>
                 <TabsContent value="reports">
                     <SuperAdminReportsTab
-                        schools={schools ?? null}
+                        subcomisiones={schools ?? null}
                         platformUsers={platformUsers ?? null}
                         schoolsLoading={schoolsLoading}
                         usersLoading={usersLoading}
@@ -263,7 +334,7 @@ export function SuperAdminDashboard() {
                         </CardHeader>
                         <CardContent className="p-0 sm:p-6">
                             <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 rounded-b-lg sm:rounded-none border-t sm:border-t-0">
-                                <PlatformUsersList schools={schools ?? []} />
+                                <PlatformUsersList subcomisiones={schools ?? []} />
                             </div>
                         </CardContent>
                     </Card>

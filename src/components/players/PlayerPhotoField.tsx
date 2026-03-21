@@ -18,25 +18,33 @@ import { Camera, Upload, Loader2, User, X } from "lucide-react";
 interface PlayerPhotoFieldProps {
   value: string;
   onChange: (url: string) => void;
-  schoolId: string;
+  subcomisionId?: string;
+  /** @deprecated Use subcomisionId */
+  schoolId?: string;
   /** Si no se pasa, el componente guarda el archivo y llama a onFileChange (para jugador nuevo). */
+  socioId?: string;
+  /** @deprecated Use socioId */
   playerId?: string;
   playerName?: string;
   disabled?: boolean;
-  /** Cuando no hay playerId, se llama con el archivo en lugar de subir (para subir después de crear el jugador). Pasar null para limpiar. */
+  /** Cuando no hay socioId, se llama con el archivo en lugar de subir (para subir después de crear el jugador). Pasar null para limpiar. */
   onFileChange?: (file: File | null) => void;
 }
 
 export function PlayerPhotoField({
   value,
   onChange,
+  subcomisionId: subcomisionIdProp,
   schoolId,
+  socioId: socioIdProp,
   playerId,
   playerName = "",
   disabled = false,
   onFileChange,
 }: PlayerPhotoFieldProps) {
-  const isNewPlayer = !playerId;
+  const subcomisionId = subcomisionIdProp ?? schoolId;
+  const socioId = socioIdProp ?? playerId;
+  const isNewPlayer = !socioId;
   const storage = useStorage();
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -121,7 +129,7 @@ export function PlayerPhotoField({
             return;
           }
           setUploading(true);
-          uploadPlayerPhoto(storage, schoolId, playerId!, file)
+          uploadPlayerPhoto(storage, subcomisionId!, socioId!, file)
             .then((url) => {
               onChange(url);
               setCameraOpen(false);
@@ -167,7 +175,7 @@ export function PlayerPhotoField({
     }
     setUploading(true);
     try {
-      const url = await uploadPlayerPhoto(storage, schoolId, playerId!, file);
+      const url = await uploadPlayerPhoto(storage, subcomisionId!, socioId!, file);
       onChange(url);
       toast({ title: "Foto guardada", description: "La foto se subió correctamente." });
     } catch (err) {

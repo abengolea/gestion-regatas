@@ -6,8 +6,9 @@
 
 import { NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
-import { computeSchoolFeeDelinquents } from '@/lib/payments/platform-fee';
+import { computeClubFeeDelinquents } from '@/lib/payments/platform-fee';
 import { verifySuperAdmin } from '@/lib/auth-server';
+import type { SchoolFeeDelinquent } from '@/lib/types/platform-fee';
 
 export async function GET(request: Request) {
   try {
@@ -17,10 +18,10 @@ export async function GET(request: Request) {
     }
 
     const db = getAdminFirestore();
-    const delinquents = await computeSchoolFeeDelinquents(db);
+    const delinquents = await computeClubFeeDelinquents(db);
 
     return NextResponse.json({
-      delinquents: delinquents.map((d) => ({
+      delinquents: delinquents.map((d: SchoolFeeDelinquent) => ({
         ...d,
         dueDate: d.dueDate.toISOString(),
       })),

@@ -1,5 +1,5 @@
 /**
- * GET /api/payments/config?schoolId=...
+ * GET /api/payments/config?subcomisionId=...
  * Obtiene configuración de cuotas de la escuela.
  *
  * PUT /api/payments/config
@@ -124,7 +124,7 @@ export async function PUT(request: Request) {
     if (clothingInstallments !== undefined) update.clothingInstallments = clothingInstallments;
 
     await db
-      .collection('schools')
+      .collection('subcomisiones')
       .doc(schoolId)
       .collection('paymentConfig')
       .doc('default')

@@ -10,7 +10,7 @@ import { Cake, User, Contact, Bot, FilePlus, ArrowLeft, UserX, ClipboardCheck, V
 import { calculateAge, isPlayerProfileComplete } from "@/lib/utils";
 import { useDoc, useUserProfile, useCollection, useUser, useFirebase } from "@/firebase";
 import { getAuth } from "firebase/auth";
-import type { Player, Evaluation } from "@/lib/types";
+import type { Socio, Evaluation } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SummaryTab } from "@/components/players/PlayerProfile/SummaryTab";
 import { MedicalRecordField } from "@/components/players/MedicalRecordField";
@@ -56,7 +56,7 @@ export default function PlayerProfilePage() {
   };
   const { toast } = useToast();
   const router = useRouter();
-  const isViewingAsPlayer = profile?.role === "player" && String(profile?.playerId ?? "") === String(id);
+  const isViewingAsPlayer = profile?.role === "player" && String(profile?.socioId ?? "") === String(id);
   const [isEvalSheetOpen, setEvalSheetOpen] = useState(false);
   const [editingEvaluation, setEditingEvaluation] = useState<Evaluation | null>(null);
   const [isEditPlayerOpen, setEditPlayerOpen] = useState(false);
@@ -65,15 +65,15 @@ export default function PlayerProfilePage() {
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
 
-  const schoolIdFromQuery = searchParams.get('schoolId');
-  const schoolId = schoolIdFromQuery || activeSchoolId;
+  const schoolIdFromQuery = searchParams.get('schoolId') ?? searchParams.get('subcomisionId');
+  const schoolId = schoolIdFromQuery ?? activeSchoolId;
   
-  const { data: player, loading: playerLoading } = useDoc<Player>(
-      profileReady && schoolId ? `schools/${schoolId}/players/${id}` : ''
+  const { data: player, loading: playerLoading } = useDoc<Socio>(
+      profileReady && schoolId ? `subcomisiones/${schoolId}/socios/${id}` : ''
   );
 
   const { data: evaluations, loading: evalsLoading, error: evalsError } = useCollection<Evaluation>(
-    profileReady && schoolId ? `schools/${schoolId}/evaluations` : '',
+    profileReady && schoolId ? `subcomisiones/${schoolId}/evaluations` : '',
     { where: ['playerId', '==', id], orderBy: ['date', 'desc'], limit: 20 }
   );
 
@@ -131,18 +131,18 @@ export default function PlayerProfilePage() {
   const canArchive =
     !!schoolId &&
     !player.archived &&
-    (profile?.role === "school_admin" || isSuperAdmin);
+    (profile?.role === "admin_subcomision" || isSuperAdmin);
 
   const canUnarchive =
     !!schoolId &&
     !!player.archived &&
-    (profile?.role === "school_admin" || isSuperAdmin);
+    (profile?.role === "admin_subcomision" || isSuperAdmin);
 
   const canToggleStatus =
     !!schoolId &&
     !player.archived &&
     !isViewingAsPlayer &&
-    (profile?.role === "school_admin" || profile?.role === "coach" || isSuperAdmin);
+    (profile?.role === "admin_subcomision" || profile?.role === "encargado_deportivo" || isSuperAdmin);
 
   const handleToggleStatus = async () => {
     if (!user || !schoolId || statusUpdating) return;
@@ -244,8 +244,8 @@ export default function PlayerProfilePage() {
   return (
     <>
     <AddEvaluationSheet
-      playerId={id}
-      schoolId={schoolId!}
+      socioId={id}
+      subcomisionId={schoolId!}
       isOpen={isEvalSheetOpen}
       onOpenChange={(open) => {
         setEvalSheetOpen(open);
@@ -257,7 +257,7 @@ export default function PlayerProfilePage() {
     />
     <EditPlayerDialog
       player={player}
-      schoolId={schoolId!}
+      subcomisionId={schoolId!}
       isOpen={isEditPlayerOpen}
       onOpenChange={setEditPlayerOpen}
       isPlayerEditing={isViewingAsPlayer}
@@ -440,9 +440,9 @@ export default function PlayerProfilePage() {
           <SummaryTab
             player={playerWithSchool}
             lastCoachComment={evaluations?.[0]?.coachComments}
-            canEditCoachFeedback={!isViewingAsPlayer && (profile?.role === "school_admin" || profile?.role === "coach")}
-            schoolId={schoolId ?? undefined}
-            playerId={id}
+            canEditCoachFeedback={!isViewingAsPlayer && (profile?.role === "admin_subcomision" || profile?.role === "encargado_deportivo")}
+            subcomisionId={schoolId ?? undefined}
+            socioId={id}
           />
           <div className="mt-4">
             <PlayerPaymentStatusCard
@@ -468,7 +468,7 @@ export default function PlayerProfilePage() {
                 playerId={id}
                 playerName={`${player.firstName ?? ""} ${player.lastName ?? ""}`.trim()}
                 playerEmail={player.email}
-                canApprove={!isViewingAsPlayer && (profile?.role === "school_admin" || profile?.role === "coach")}
+                canApprove={!isViewingAsPlayer && (profile?.role === "admin_subcomision" || profile?.role === "encargado_deportivo")}
                 disabled={false}
               />
             </CardContent>
@@ -488,8 +488,8 @@ export default function PlayerProfilePage() {
             </Card>
           ) : (
             <EvaluationsTab
-              playerId={id}
-              schoolId={schoolId!}
+              socioId={id}
+              subcomisionId={schoolId!}
               evaluations={evaluations ?? undefined}
               loading={evalsLoading}
               error={evalsError}
@@ -515,7 +515,7 @@ export default function PlayerProfilePage() {
               </CardContent>
             </Card>
           ) : (
-            <PhysicalAssessmentsTab player={playerWithSchool} schoolId={schoolId!} isViewingAsPlayer={isViewingAsPlayer} />
+            <PhysicalAssessmentsTab player={playerWithSchool} subcomisionId={schoolId!} isViewingAsPlayer={isViewingAsPlayer} />
           )}
         </TabsContent>
         <TabsContent value="videoteca">
@@ -532,8 +532,8 @@ export default function PlayerProfilePage() {
             </Card>
           ) : (
             <PlayerVideoteca
-              schoolId={schoolId!}
-              playerId={id}
+              subcomisionId={schoolId!}
+              socioId={id}
               playerName={`${player.firstName ?? ""} ${player.lastName ?? ""}`.trim()}
               embedded
               isViewingAsPlayer={isViewingAsPlayer}
@@ -541,7 +541,7 @@ export default function PlayerProfilePage() {
           )}
         </TabsContent>
         <TabsContent value="attendance">
-          <AttendanceHistory schoolId={schoolId!} playerId={id} />
+          <AttendanceHistory subcomisionId={schoolId!} socioId={id} />
         </TabsContent>
         {!isViewingAsPlayer && (
         <TabsContent value="analytics">

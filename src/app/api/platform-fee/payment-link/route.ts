@@ -1,6 +1,6 @@
 /**
  * POST /api/platform-fee/payment-link
- * Genera link de pago para que la escuela pague su mensualidad (admin/coach de la escuela).
+ * Genera link de pago para que la escuela pague su mensualidad (admin/encargado_deportivo de la escuela).
  * Retorna checkoutUrl para redirigir a Mercado Pago.
  */
 
@@ -9,15 +9,15 @@ import { z } from 'zod';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import {
   getOrCreatePlatformFeeConfig,
-  getOrCreateSchoolFeeConfig,
-  findApprovedSchoolFeePayment,
+  getOrCreateClubFeeConfig,
+  findApprovedClubFeePayment,
   getSchoolMonthlyAmount,
 } from '@/lib/payments/platform-fee';
 import { createPlatformFeePreference } from '@/lib/payments/mercadopago-platform-preference';
 import { verifyIdToken } from '@/lib/auth-server';
 
 const BodySchema = z.object({
-  schoolId: z.string().min(1),
+  subcomisionId: z.string().min(1),
   period: z.string().regex(/^\d{4}-\d{2}$/, 'Formato YYYY-MM'),
 });
 
@@ -51,19 +51,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const { schoolId, period } = parsed.data;
+    const { subcomisionId, period } = parsed.data;
+    const schoolId = subcomisionId;
     const db = getAdminFirestore();
 
     const platformSnap = await db.collection('platformUsers').doc(auth.uid).get();
-    const isSuperAdmin = (platformSnap.data() as { super_admin?: boolean })?.super_admin === true;
-    const userInSchool = await db.collection('schools').doc(schoolId).collection('users').doc(auth.uid).get();
+    const platformData = platformSnap.data() as { gerente_club?: boolean; super_admin?: boolean } | undefined;
+    const isSuperAdmin = (platformData?.gerente_club ?? platformData?.super_admin) === true;
+    const userInSchool = await db.collection('subcomisiones').doc(schoolId).collection('users').doc(auth.uid).get();
     const userData = userInSchool.data() as { role?: string } | undefined;
-    const isSchoolAdmin = userData?.role === 'school_admin';
-    if (!isSuperAdmin && (!userInSchool.exists || !isSchoolAdmin)) {
+    const isSubcomisionAdmin = userData?.role === 'admin_subcomision';
+    if (!isSuperAdmin && (!userInSchool.exists || !isSubcomisionAdmin)) {
       return NextResponse.json({ error: 'Solo el administrador de la escuela puede pagar la mensualidad' }, { status: 403 });
     }
 
-    const existing = await findApprovedSchoolFeePayment(db, schoolId, period);
+    const existing = await findApprovedClubFeePayment(db, schoolId, period);
     if (existing) {
       return NextResponse.json(
         { error: 'Esta mensualidad ya está pagada' },
@@ -72,7 +74,7 @@ export async function POST(request: Request) {
     }
 
     const platformConfig = await getOrCreatePlatformFeeConfig(db);
-    const schoolConfig = await getOrCreateSchoolFeeConfig(db, schoolId);
+    const schoolConfig = await getOrCreateClubFeeConfig(db, schoolId);
 
     if (schoolConfig.isBonified) {
       return NextResponse.json(
@@ -101,7 +103,7 @@ export async function POST(request: Request) {
     const schoolName = schoolSnap.exists ? (schoolSnap.data()?.name ?? 'Escuela') : 'Escuela';
 
     const { init_point } = await createPlatformFeePreference(platformToken, {
-      schoolId,
+      subcomisionId: schoolId,
       schoolName,
       period,
       amount: totalAmount,

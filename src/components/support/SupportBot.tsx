@@ -26,7 +26,8 @@ type Message = { role: 'user' | 'bot'; content: string; stepId?: string };
 
 interface SupportBotProps {
   flow: SupportFlow;
-  schoolId: string;
+  subcomisionId?: string;
+  schoolId?: string;
   userId: string;
   userEmail?: string;
   userDisplayName?: string;
@@ -38,7 +39,8 @@ interface SupportBotProps {
 
 export function SupportBot({
   flow,
-  schoolId,
+  subcomisionId: subcomisionIdProp,
+  schoolId: schoolIdProp,
   userId,
   userEmail,
   userDisplayName,
@@ -47,6 +49,7 @@ export function SupportBot({
   onDone,
   clientContext,
 }: SupportBotProps) {
+  const schoolId = subcomisionIdProp ?? schoolIdProp;
   const [currentStep, setCurrentStep] = useState<SupportFlowStep | null>(() => getStartStep(flow));
   const [state, setState] = useState<Record<string, unknown>>({});
   const [messages, setMessages] = useState<Message[]>(() => {
@@ -107,13 +110,13 @@ export function SupportBot({
       (updatedState.summary as string) ||
       (updatedState.freeText as string) ||
       `Soporte: ${flow.name}`;
-    const description = [updatedState.freeText, updatedState.reproSteps].filter(Boolean).join('\n\n') as string | undefined;
+    const description = [updatedState.freeText, updatedState.reproSteps].filter(Boolean).join('\n\n') ?? undefined;
     const payload: Omit<SupportTicket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt'> = {
-      schoolId,
+      schoolId: schoolId ?? '',
       userId,
-      userEmail,
-      userDisplayName,
-      userRole,
+      userEmail: userEmail ?? '',
+      userDisplayName: userDisplayName ?? '',
+      userRole: userRole ?? '',
       category,
       severity: severity as TicketSeverity,
       summary,

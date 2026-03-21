@@ -26,8 +26,8 @@ function docToPost(
 ): Omit<import("@/lib/types/posts").Post, "id"> & { id: string } {
   return {
     id,
-    schoolId: String(data.schoolId ?? ""),
-    schoolSlug: String(data.schoolSlug ?? ""),
+    subcomisionId: String(data.schoolId ?? ""),
+    subcomisionSlug: String(data.schoolSlug ?? ""),
     schoolName: String(data.schoolName ?? ""),
     title: String(data.title ?? ""),
     slug: String(data.slug ?? ""),
@@ -320,7 +320,7 @@ export async function getPostById(postId: string): Promise<import("@/lib/types/p
 export async function getSchoolBySlug(schoolSlug: string): Promise<{ id: string; name: string; slug: string } | null> {
   const db = getAdminFirestore();
   const bySlug = await db
-    .collection("schools")
+    .collection("subcomisiones")
     .where("slug", "==", schoolSlug)
     .limit(1)
     .get();

@@ -19,9 +19,9 @@ export async function POST(request: Request) {
     const adminAuth = getAdminAuth();
 
     const platformUserSnap = await db.doc(`platformUsers/${auth.uid}`).get();
-    const platformData = platformUserSnap.data() as { super_admin?: boolean; email?: string } | undefined;
+    const platformData = platformUserSnap.data() as { gerente_club?: boolean; super_admin?: boolean; email?: string } | undefined;
     const isSuperAdmin =
-      platformData?.super_admin === true || auth.email === "abengolea1@gmail.com";
+      (platformData?.gerente_club ?? platformData?.super_admin) === true || auth.email === "abengolea1@gmail.com";
 
     if (!isSuperAdmin) {
       return NextResponse.json(
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     const platformUserRef = db.doc(`platformUsers/${targetUid}`);
     batch.delete(platformUserRef);
 
-    // schools/{schoolId}/users/{uid} vía collectionGroup
+    // subcomisiones/{subcomisionId}/users/{uid} vía collectionGroup
     const usersGroup = db.collectionGroup("users");
     const usersSnap = await usersGroup.get();
     usersSnap.docs.forEach((d) => {
@@ -75,13 +75,13 @@ export async function POST(request: Request) {
     accessRequestsSnap.docs.forEach((d) => batch.delete(d.ref));
 
     if (emailLower) {
-      const pendingByEmailRef = db.doc(`pendingPlayerByEmail/${emailLower}`);
+      const pendingByEmailRef = db.doc(`pendingSocioByEmail/${emailLower}`);
       batch.delete(pendingByEmailRef);
 
       const attemptsSnap = await db.collection("emailVerificationAttempts").where("email", "==", targetEmail).get();
       attemptsSnap.docs.forEach((d) => batch.delete(d.ref));
 
-      const playerLoginRef = db.doc(`playerLogins/${emailLower}`);
+      const playerLoginRef = db.doc(`socioLogins/${emailLower}`);
       batch.delete(playerLoginRef);
     }
 

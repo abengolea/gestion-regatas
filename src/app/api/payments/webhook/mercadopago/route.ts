@@ -1,5 +1,5 @@
 /**
- * GET/POST /api/payments/webhook/mercadopago?schoolId=xxx
+ * GET/POST /api/payments/webhook/mercadopago?subcomisionId=xxx
  * Recibe notificaciones IPN/Webhook de Mercado Pago (topic=payment, id=payment_id).
  * La notification_url incluye schoolId para usar el access_token de esa escuela
  * y consultar el pago en la API de MP.
@@ -21,7 +21,7 @@ import { sendEmailEvent } from '@/lib/payments/email-events';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import type admin from 'firebase-admin';
 
-/** external_reference que guardamos al crear la preferencia: schoolId|playerId|period */
+/** external_reference que guardamos al crear la preferencia: schoolId|socioId|period */
 function parseExternalReference(ref: string): { schoolId: string; playerId: string; period: string } | null {
   const parts = ref.split('|');
   if (parts.length !== 3) return null;
@@ -109,7 +109,7 @@ async function processNotification(params: {
 
   const playerExists = await playerExistsInSchool(db, schoolId, playerId);
   if (!playerExists) {
-    console.warn('[webhook/mercadopago] Player not in school', { schoolId, playerId });
+    console.warn('[webhook/mercadopago] Socio not in school', { schoolId, playerId });
     return NextResponse.json({ ok: true });
   }
 
@@ -118,8 +118,8 @@ async function processNotification(params: {
   await createPayment(
     db,
     {
-      playerId,
-      schoolId,
+      socioId: playerId,
+      subcomisionId: schoolId,
       period,
       amount,
       currency,
@@ -133,13 +133,13 @@ async function processNotification(params: {
 
   await updatePlayerStatus(db, schoolId, playerId, 'active');
 
-  const playerRef = db.collection('schools').doc(schoolId).collection('players').doc(playerId);
+  const playerRef = db.collection('subcomisiones').doc(schoolId).collection('socios').doc(playerId);
   const playerSnap = await playerRef.get();
-  const playerData = playerSnap.data();
-  const playerName = playerData
-    ? `${playerData.firstName ?? ''} ${playerData.lastName ?? ''}`.trim()
-    : 'Jugador';
-  const toEmail = playerData?.email;
+  const socioData = playerSnap.data();
+  const playerName = socioData
+    ? `${(socioData.firstName ?? socioData.nombre ?? '')} ${(socioData.lastName ?? socioData.apellido ?? '')}`.trim()
+    : 'Socio';
+  const toEmail = socioData?.email ?? (socioData as { email?: string })?.email;
   if (toEmail) {
     try {
       await sendEmailEvent({

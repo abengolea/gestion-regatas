@@ -3,16 +3,14 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Activity } from "lucide-react";
-import { useUserProfile, useCollection } from "@/firebase";
-import type { School } from "@/lib/types";
+import { useUserProfile } from "@/firebase";
+import { useSubcomisionesList } from "@/hooks/use-subcomisiones-list";
 import { SuperAdminPhysicalTemplateTab } from "@/components/admin/SuperAdminPhysicalTemplateTab";
 
 export default function PhysicalTemplatePage() {
   const router = useRouter();
   const { isSuperAdmin, isReady } = useUserProfile();
-  const { data: schools, loading: schoolsLoading } = useCollection<School>("schools", {
-    orderBy: ["createdAt", "desc"],
-  });
+  const { data: subcomisiones } = useSubcomisionesList();
 
   useEffect(() => {
     if (!isReady) return;
@@ -43,7 +41,7 @@ export default function PhysicalTemplatePage() {
           </p>
         </div>
       </div>
-      <SuperAdminPhysicalTemplateTab schools={schools ?? null} />
+      <SuperAdminPhysicalTemplateTab subcomisiones={subcomisiones ?? null} />
     </div>
   );
 }

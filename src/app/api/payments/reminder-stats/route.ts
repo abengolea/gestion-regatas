@@ -1,5 +1,5 @@
 /**
- * GET /api/payments/reminder-stats?schoolId=xxx
+ * GET /api/payments/reminder-stats?subcomisionId=xxx
  * Estadísticas de recordatorios enviados (hoy, este mes, límite diario).
  */
 

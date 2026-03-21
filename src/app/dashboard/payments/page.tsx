@@ -22,7 +22,7 @@ export default function PaymentsPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const schoolId = profile?.activeSchoolId;
+  const subcomisionId = profile?.activeSchoolId;
   const tabFromUrl = searchParams.get("tab");
   const paymentResult = searchParams.get("payment");
   const schoolFeeResult = searchParams.get("schoolFee");
@@ -114,7 +114,7 @@ export default function PaymentsPage() {
     );
   }
 
-  if (!schoolId) {
+  if (!subcomisionId) {
     return (
       <Card>
         <CardHeader>
@@ -136,7 +136,7 @@ export default function PaymentsPage() {
                 Mensualidad a la plataforma
               </h1>
               <p className="text-muted-foreground text-sm sm:text-base">
-                Cuota mensual que tu escuela paga a Escuelas River
+                Cuota mensual que tu escuela paga a Regatas+
               </p>
             </>
           ) : (
@@ -160,7 +160,7 @@ export default function PaymentsPage() {
       </div>
 
       {isMensualidadTab ? (
-        <SchoolAdminMensualidadView schoolId={schoolId} getToken={getToken} refreshTrigger={schoolFeeResult} />
+        <SchoolAdminMensualidadView subcomisionId={subcomisionId} getToken={getToken} refreshTrigger={schoolFeeResult} />
       ) : (
         <Tabs value={activeTab} onValueChange={onTabChange} key={tabFromUrl ?? "payments"}>
           <TabsList className="w-full grid grid-cols-3 gap-1 p-1 h-auto md:h-10 bg-card">
@@ -180,13 +180,13 @@ export default function PaymentsPage() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="payments">
-            <PaymentsTab schoolId={schoolId} getToken={getToken} />
+            <PaymentsTab subcomisionId={subcomisionId} getToken={getToken} />
           </TabsContent>
           <TabsContent value="delinquents">
-            <DelinquentsTab schoolId={schoolId} getToken={getToken} />
+            <DelinquentsTab subcomisionId={subcomisionId} getToken={getToken} />
           </TabsContent>
           <TabsContent value="config">
-            <PaymentConfigTab schoolId={schoolId} getToken={getToken} />
+            <PaymentConfigTab subcomisionId={subcomisionId} getToken={getToken} />
           </TabsContent>
         </Tabs>
       )}

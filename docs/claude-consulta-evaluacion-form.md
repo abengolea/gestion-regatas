@@ -20,8 +20,8 @@ const evaluationSchema = z.object({
 ```tsx
 // Props del componente
 interface AddEvaluationSheetProps {
-  playerId: string;
-  schoolId: string;
+  socioId: string;
+  subcomisionId: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   playerName?: string;

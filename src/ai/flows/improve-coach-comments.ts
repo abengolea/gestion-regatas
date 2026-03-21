@@ -9,18 +9,18 @@ import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
 import { getAvailableGeminiModel } from '@/ai/get-available-gemini-model';
 
-const ImproveCoachCommentsInputSchema = z.object({
+const ImproveEncargadoDeportivoCommentsInputSchema = z.object({
   playerName: z.string().describe('Nombre del jugador.'),
   previousEvaluationsSummary: z.string().describe('Resumen en texto de evaluaciones anteriores: fecha y comentarios.'),
   currentDraft: z.string().describe('Borrador actual del comentario (puede ser transcripción de voz o texto escrito).'),
 });
 
-const ImproveCoachCommentsOutputSchema = z.object({
+const ImproveEncargadoDeportivoCommentsOutputSchema = z.object({
   improvedText: z.string().describe('Texto mejorado, coherente y bien redactado para los comentarios del entrenador.'),
 });
 
-export type ImproveCoachCommentsInput = z.infer<typeof ImproveCoachCommentsInputSchema>;
-export type ImproveCoachCommentsOutput = z.infer<typeof ImproveCoachCommentsOutputSchema>;
+export type ImproveCoachCommentsInput = z.infer<typeof ImproveEncargadoDeportivoCommentsInputSchema>;
+export type ImproveCoachCommentsOutput = z.infer<typeof ImproveEncargadoDeportivoCommentsOutputSchema>;
 
 export async function improveCoachCommentsWithAI(
   input: ImproveCoachCommentsInput
@@ -30,8 +30,8 @@ export async function improveCoachCommentsWithAI(
 
 const improvePrompt = ai.definePrompt({
   name: 'improveCoachCommentsPrompt',
-  input: { schema: ImproveCoachCommentsInputSchema },
-  output: { schema: ImproveCoachCommentsOutputSchema },
+  input: { schema: ImproveEncargadoDeportivoCommentsInputSchema },
+  output: { schema: ImproveEncargadoDeportivoCommentsOutputSchema },
   prompt: `
 Eres un entrenador experto de fútbol. Tu tarea es redactar un único párrafo para la sección "Comentarios del Entrenador" de una evaluación del jugador {{playerName}}.
 
@@ -58,8 +58,8 @@ Devuelve únicamente el texto mejorado, sin títulos ni prefijos.
 const improveFlow = ai.defineFlow(
   {
     name: 'improveCoachCommentsFlow',
-    inputSchema: ImproveCoachCommentsInputSchema,
-    outputSchema: ImproveCoachCommentsOutputSchema,
+    inputSchema: ImproveEncargadoDeportivoCommentsInputSchema,
+    outputSchema: ImproveEncargadoDeportivoCommentsOutputSchema,
   },
   async (input) => {
     const modelName = await getAvailableGeminiModel();

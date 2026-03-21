@@ -20,9 +20,9 @@ export async function POST(request: Request) {
 
     const db = getAdminFirestore();
     const platformUserSnap = await db.doc(`platformUsers/${auth.uid}`).get();
-    const platformData = platformUserSnap.data() as { super_admin?: boolean } | undefined;
+    const platformData = platformUserSnap.data() as { gerente_club?: boolean; super_admin?: boolean } | undefined;
     const isSuperAdmin =
-      platformData?.super_admin === true || auth.email === "abengolea1@gmail.com";
+      (platformData?.gerente_club ?? platformData?.super_admin) === true || auth.email === "abengolea1@gmail.com";
 
     if (!isSuperAdmin) {
       return NextResponse.json(

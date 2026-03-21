@@ -300,7 +300,7 @@ export const supportFlowsSeed: (Omit<SupportFlow, 'updatedAt'> & { updatedAt: Da
         message: 'Completá para poder investigar.',
         fields: [
           { key: 'deviceInfo', label: 'Dispositivo y navegador', type: 'text', required: false },
-          { key: 'route', label: '¿En qué pantalla pasa? (ej. /dashboard/players)', type: 'text', required: false },
+          { key: 'route', label: '¿En qué pantalla pasa? (ej. /dashboard/socios)', type: 'text', required: false },
           { key: 'reproSteps', label: '¿Qué estabas haciendo?', type: 'textarea', required: true },
           { key: 'severity', label: 'Severidad', type: 'select', options: [
             { label: 'Baja', value: 'low' },

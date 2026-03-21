@@ -18,7 +18,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import Link from "next/link";
 import { isBirthdayToday } from "@/lib/utils";
-import type { Player } from "@/lib/types";
+import type { Socio } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 
 export function Header() {
@@ -31,17 +31,17 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
-  // schoolId efectivo: perfil, URL (?schoolId=) o ruta (/dashboard/schools/[id])
+  // subcomisionId efectivo: perfil, URL (?schoolId=) o ruta (/dashboard/subcomisiones/[id])
   const schoolIdFromUrl = searchParams.get("schoolId") ?? (pathname?.match(/^\/dashboard\/schools\/([^/]+)/)?.[1] ?? null);
   const effectiveSchoolId = activeSchoolId ?? schoolIdFromUrl;
-  // Solo staff (school_admin o coach) puede listar jugadores; super admin usa schoolId de URL.
-  const isStaff = profile?.role === "school_admin" || profile?.role === "coach";
+  // Solo staff (admin_subcomision o encargado_deportivo) puede listar jugadores; super admin usa schoolId de URL.
+  const isStaff = profile?.role === "admin_subcomision" || profile?.role === "encargado_deportivo";
   const canListSchoolCollections = isReady && effectiveSchoolId && isStaff;
-  const { data: players } = useCollection<Player>(
-    canListSchoolCollections ? `schools/${effectiveSchoolId}/players` : "",
+  const { data: socios } = useCollection<Socio>(
+    canListSchoolCollections ? `subcomisiones/${effectiveSchoolId}/socios` : "",
     { orderBy: ["lastName", "asc"] }
   );
-  const { data: pendingPlayers } = useCollection(
+  const { data: pendingSocios } = useCollection(
     canListSchoolCollections ? `schools/${effectiveSchoolId}/pendingPlayers` : "",
     {}
   );
@@ -49,11 +49,11 @@ export function Header() {
     canListSchoolCollections ? "accessRequests" : "",
     { where: ["status", "==", "pending"] }
   );
-  const playersList = (players ?? []).filter((p) => !p.archived);
+  const playersList = (socios ?? []).filter((p) => !p.archived);
   const birthdaysToday = playersList.filter((p) => isBirthdayToday(p.birthDate));
   const birthdayCount = birthdaysToday.length;
   // Solo staff ve solicitudes pendientes; el jugador no debe verlas.
-  const solicitudesCount = isStaff ? (pendingPlayers?.length ?? 0) + (accessRequests?.length ?? 0) : 0;
+  const solicitudesCount = isStaff ? (pendingSocios?.length ?? 0) + (accessRequests?.length ?? 0) : 0;
 
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -77,10 +77,10 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelectPlayer = (playerId: string) => {
+  const handleSelectPlayer = (socioId: string) => {
     setSearchQuery("");
     setSearchOpen(false);
-    router.push(`/dashboard/players/${playerId}?schoolId=${effectiveSchoolId}`);
+    router.push(`/dashboard/players/${socioId}?schoolId=${effectiveSchoolId}`);
   };
 
   const handleLogout = async () => {

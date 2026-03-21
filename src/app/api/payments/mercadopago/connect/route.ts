@@ -1,5 +1,5 @@
 /**
- * GET /api/payments/mercadopago/connect?schoolId=...
+ * GET /api/payments/mercadopago/connect?subcomisionId=...
  * Devuelve la URL de autorización de Mercado Pago para que el cliente redirija (OAuth).
  * Solo debe ser llamado por un usuario autenticado que sea admin de esa escuela.
  */
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'schoolId requerido' }, { status: 400 });
     }
 
-    // TODO: verificar que auth.uid sea admin de schoolId (isSchoolAdminOrSuperAdmin)
+    // TODO: verificar que auth.uid sea admin de schoolId (isSubcomisionAdminOrSuperAdmin)
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.headers.get('origin') ?? 'http://localhost:9002';
     const redirectUri = `${baseUrl}/api/payments/mercadopago/callback`;
     const state = signOAuthState(schoolId);

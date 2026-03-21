@@ -44,14 +44,15 @@ const addUserSchema = z
     email: z.string().email("El correo electrónico no es válido."),
     emailConfirm: z.string().email("El correo electrónico no es válido."),
     password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres."),
-    role: z.enum(["school_admin", "coach"], { required_error: "El rol es requerido." }),
+    role: z.enum(["admin_subcomision", "encargado_deportivo"], { required_error: "El rol es requerido." }),
   })
   .refine((data) => data.email === data.emailConfirm, {
     message: "Los correos electrónicos no coinciden.",
     path: ["emailConfirm"],
   });
 
-export function AddSchoolUserDialog({ schoolId }: { schoolId: string }) {
+export function AddSubcomisionUserDialog({ subcomisionId, schoolId }: { schoolId?: string; subcomisionId?: string }) {
+  const id = subcomisionId ?? schoolId ?? "";
   const [open, setOpen] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -63,6 +64,7 @@ export function AddSchoolUserDialog({ schoolId }: { schoolId: string }) {
       email: "",
       emailConfirm: "",
       password: "",
+      role: "admin_subcomision",
     },
   });
 
@@ -83,7 +85,7 @@ export function AddSchoolUserDialog({ schoolId }: { schoolId: string }) {
         const batch = writeBatch(firestore);
 
         // Doc 1: The user's role within the school
-        const schoolUserRef = doc(firestore, 'schools', schoolId, 'users', newUser.uid);
+        const schoolUserRef = doc(firestore, 'subcomisiones', id, 'users', newUser.uid);
         const schoolUserData = {
             displayName: values.displayName,
             email: (values.email ?? '').trim().toLowerCase(),
@@ -95,7 +97,7 @@ export function AddSchoolUserDialog({ schoolId }: { schoolId: string }) {
         const platformUserRef = doc(firestore, 'platformUsers', newUser.uid);
         const platformUserData = {
             email: (values.email ?? '').trim().toLowerCase(),
-            super_admin: false,
+            gerente_club: false,
             createdAt: Timestamp.now()
         };
         batch.set(platformUserRef, platformUserData);
@@ -224,8 +226,8 @@ export function AddSchoolUserDialog({ schoolId }: { schoolId: string }) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="school_admin">Administrador de Escuela</SelectItem>
-                      <SelectItem value="coach">Entrenador</SelectItem>
+                      <SelectItem value="admin_subcomision">Administrador</SelectItem>
+                      <SelectItem value="encargado_deportivo">Entrenador</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

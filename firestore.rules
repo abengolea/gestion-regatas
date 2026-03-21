@@ -2,436 +2,324 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Helper Functions ---
+    // --- Helpers ---
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isSuperAdmin() {
+    function isGerenteClub() {
       return isSignedIn() && (
-        (exists(/databases/$(database)/documents/platformUsers/$(request.auth.uid))
-          && get(/databases/$(database)/documents/platformUsers/$(request.auth.uid)).data.get('super_admin', false) == true)
-        || request.auth.token.email == 'abengolea1@gmail.com'
+        request.auth.token.email == 'abengolea1@gmail.com'
+        || (exists(/databases/$(database)/documents/platformUsers/$(request.auth.uid))
+            && (get(/databases/$(database)/documents/platformUsers/$(request.auth.uid)).data.get('gerente_club', false) == true
+                || get(/databases/$(database)/documents/platformUsers/$(request.auth.uid)).data.get('super_admin', false) == true))
       );
     }
 
-    function userExistsInSchool(schoolId) {
-      return exists(/databases/$(database)/documents/schools/$(schoolId)/users/$(request.auth.uid));
+    function userExistsInSubcomision(subcomisionId) {
+      return exists(/databases/$(database)/documents/subcomisiones/$(subcomisionId)/users/$(request.auth.uid))
+        || exists(/databases/$(database)/documents/schools/$(subcomisionId)/users/$(request.auth.uid));
     }
 
-    function getSchoolUserData(schoolId) {
-      return userExistsInSchool(schoolId)
-          ? get(/databases/$(database)/documents/schools/$(schoolId)/users/$(request.auth.uid)).data
-          : null;
+    function getSubcomisionUserData(subcomisionId) {
+      return userExistsInSubcomision(subcomisionId)
+        ? (exists(/databases/$(database)/documents/subcomisiones/$(subcomisionId)/users/$(request.auth.uid))
+            ? get(/databases/$(database)/documents/subcomisiones/$(subcomisionId)/users/$(request.auth.uid)).data
+            : get(/databases/$(database)/documents/schools/$(subcomisionId)/users/$(request.auth.uid)).data)
+        : null;
     }
 
-    function isSchoolAdmin(schoolId) {
-      let userData = getSchoolUserData(schoolId);
-      return isSignedIn()
-          && userData != null
-          && userData.role == 'school_admin';
+    function isAdminSubcomision(subcomisionId) {
+      let userData = getSubcomisionUserData(subcomisionId);
+      return isSignedIn() && userData != null && userData.role == 'admin_subcomision';
     }
 
-    function isCoach(schoolId) {
-      let userData = getSchoolUserData(schoolId);
-      return isSignedIn()
-          && userData != null
-          && userData.role == 'coach';
+    function isEncargadoDeportivo(subcomisionId) {
+      let userData = getSubcomisionUserData(subcomisionId);
+      return isSignedIn() && userData != null && userData.role == 'encargado_deportivo';
     }
 
-    function isMemberOfSchool(schoolId) {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/schools/$(schoolId)/users/$(request.auth.uid));
+    function isStaffOfSubcomision(subcomisionId) {
+      return isGerenteClub()
+        || isAdminSubcomision(subcomisionId)
+        || isEncargadoDeportivo(subcomisionId);
     }
 
-    // True si el usuario es el jugador (el doc de jugador tiene su email). Comparación case-insensitive.
-    function isOwnPlayer(schoolId, playerId) {
-      return isSignedIn()
-        && request.auth.token.email != null
-        && exists(/databases/$(database)/documents/schools/$(schoolId)/players/$(playerId))
-        && get(/databases/$(database)/documents/schools/$(schoolId)/players/$(playerId)).data.get('email', '').lower() == request.auth.token.email.lower();
+    function isEditorOrViewer(subcomisionId) {
+      let userData = getSubcomisionUserData(subcomisionId);
+      return isSignedIn() && userData != null
+        && (userData.role == 'editor' || userData.role == 'viewer');
     }
-    // True si en este request se está guardando el email del usuario autenticado (jugador editando su perfil).
-    function requestEmailMatchesAuth(schoolId, playerId) {
-      let reqEmail = request.resource.data.get('email', '');
-      return isSignedIn()
-        && request.auth.token.email != null
-        && reqEmail != null
-        && reqEmail is string
-        && reqEmail.lower() == request.auth.token.email.lower();
+
+    function canReadInSubcomision(subcomisionId) {
+      return isGerenteClub() || isStaffOfSubcomision(subcomisionId) || isEditorOrViewer(subcomisionId);
     }
-    // True si el usuario es el jugador (doc ya tiene su email). Comparación case-insensitive.
-    function canUpdatePlayerAsSelf(schoolId, playerId) {
+
+    function isOwnSocio(subcomisionId, socioId) {
       return isSignedIn()
         && request.auth.token.email != null
-        && (isOwnPlayer(schoolId, playerId) || requestEmailMatchesAuth(schoolId, playerId));
+        && exists(/databases/$(database)/documents/subcomisiones/$(subcomisionId)/socios/$(socioId))
+        && get(/databases/$(database)/documents/subcomisiones/$(subcomisionId)/socios/$(socioId)).data.get('email', '').lower() == request.auth.token.email.lower();
     }
-    // True si el usuario tiene un playerLogin que apunta a este schoolId+playerId.
-    function hasPlayerLoginFor(schoolId, playerId) {
+
+    function hasSocioLoginFor(subcomisionId, socioId) {
       return isSignedIn()
         && request.auth.token.email != null
-        && exists(/databases/$(database)/documents/playerLogins/$(request.auth.token.email.lower()))
-        && get(/databases/$(database)/documents/playerLogins/$(request.auth.token.email.lower())).data.get('schoolId', '') == schoolId
-        && get(/databases/$(database)/documents/playerLogins/$(request.auth.token.email.lower())).data.get('playerId', '') == playerId;
-    }
-    
-    // --- Schema Validation Helpers ---
-
-    function isValidSchoolUserRole(role) {
-      return role in ['school_admin', 'coach', 'editor', 'viewer'];
+        && exists(/databases/$(database)/documents/socioLogins/$(request.auth.token.email.lower()))
+        && get(/databases/$(database)/documents/socioLogins/$(request.auth.token.email.lower())).data.get('subcomisionId', '') == subcomisionId
+        && get(/databases/$(database)/documents/socioLogins/$(request.auth.token.email.lower())).data.get('socioId', '') == socioId;
     }
 
-    function isEditor(schoolId) {
-      let userData = getSchoolUserData(schoolId);
-      return isSignedIn()
-          && userData != null
-          && userData.role == 'editor';
+    function isComercio() {
+      return isSignedIn() && exists(/databases/$(database)/documents/comercios/$(request.auth.uid));
     }
 
-    function isViewer(schoolId) {
-      let userData = getSchoolUserData(schoolId);
-      return isSignedIn()
-          && userData != null
-          && userData.role == 'viewer';
-    }
-
-    function isStaffOfSchool(schoolId) {
-      return isSuperAdmin()
-          || isSchoolAdmin(schoolId)
-          || isCoach(schoolId)
-          || isEditor(schoolId)
-          || isViewer(schoolId);
-    }
-
-    // --- Rules ---
-    
-    // CRÍTICO: Permite que un usuario busque sus propios roles en CUALQUIER escuela.
-    // Necesario para la collectionGroup query que se ejecuta al iniciar sesión.
-    // Comparación case-insensitive: Auth y documentos pueden tener mayúsculas distintas.
-    match /{path=**}/users/{userId} {
-      allow read: if isSignedIn()
-        && request.auth.token.email != null
-        && resource.data.get('email', '').lower() == request.auth.token.email.lower();
-    }
-
-    // Colección para Trigger Email (extensión firestore-send-email). Solo crear; la extensión actualiza estado.
-    match /mail/{mailId} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if false;
-    }
-
-    // Solicitudes de acceso: usuario logueado sin perfil pide ser dado de alta como jugador.
-    match /accessRequests/{requestId} {
-      allow create: if isSignedIn();
-      allow read, update: if isSignedIn();
-      allow delete: if isSignedIn();
-    }
-
-    // Jugadores: mapa email (doc id) -> schoolId + playerId para que el jugador pueda iniciar sesión sin collection group.
-    match /playerLogins/{emailKey} {
-      allow read: if isSignedIn() && request.auth.token.email != null && emailKey == request.auth.token.email.lower();
-      allow create, update: if isSuperAdmin()
-        || (request.resource.data.schoolId != null && request.resource.data.playerId != null
-            && (isCoach(request.resource.data.schoolId) || isSchoolAdmin(request.resource.data.schoolId)));
-      allow delete: if isSuperAdmin()
-        || (resource.data.schoolId != null && (isCoach(resource.data.schoolId) || isSchoolAdmin(resource.data.schoolId)));
-    }
-
+    // --- Solo para chequeo de gerente_club ---
+    // Lectura: gerente o el propio usuario. Escritura: solo el propio usuario puede crear/actualizar su doc.
+    // Usuarios normales no pueden ponerse super_admin ni gerente_club.
     match /platformUsers/{userId} {
-      // Un usuario puede leer su propio documento. Un super admin puede leer cualquiera.
-      allow read: if isSignedIn() && (isSuperAdmin() || request.auth.uid == userId);
-      
-      // Allow creation if:
-      // 1. The caller is a super admin.
-      // 2. The caller is any signed-in user, as long as they are not granting super_admin rights.
-      //    This allows school_admins to create the necessary platform user doc for new school users.
-      // 3. The bootstrap user is creating their own super_admin profile for the first time.
-      allow create: if isSuperAdmin() ||
-                     (isSignedIn() && request.resource.data.super_admin == false) ||
-                     (
-                       isSignedIn() &&
-                       request.auth.uid == userId &&
-                       request.auth.token.email == 'abengolea1@gmail.com' && 
-                       request.resource.data.super_admin == true
-                     );
-
-      // Un super admin puede actualizar cualquier perfil.
-      // Un usuario puede actualizar su propio documento, pero no darse permisos de super admin.
-      allow update: if isSignedIn() && (
-        isSuperAdmin() || 
-        (request.auth.uid == userId && !('super_admin' in request.resource.data))
+      allow read: if isSignedIn() && (isGerenteClub() || request.auth.uid == userId);
+      // Crear: el propio usuario O un gerente al dar de alta nuevos admins
+      allow create: if isSignedIn() && (
+        (request.auth.uid == userId && (
+          request.auth.token.email == 'abengolea1@gmail.com'
+          || (!request.resource.data.get('super_admin', false) && !request.resource.data.get('gerente_club', false))
+        ))
+        || (isGerenteClub() && !request.resource.data.get('super_admin', false) && !request.resource.data.get('gerente_club', false))
       );
+      allow update: if isSignedIn() && request.auth.uid == userId && (
+        request.auth.token.email == 'abengolea1@gmail.com'
+        || (!request.resource.data.get('super_admin', false) && !request.resource.data.get('gerente_club', false))
+      );
+      allow delete: if false;
     }
 
-    // Intentos de verificación de email para registro web. Acceso sin auth para create/get/update.
-    match /emailVerificationAttempts/{attemptId} {
-      allow read, write: if true;
+    match /socioLogins/{emailKey} {
+      allow read: if isSignedIn() && request.auth.token.email != null && emailKey == request.auth.token.email.lower();
+      allow write: if isGerenteClub();
     }
 
-    // Mapa email -> schoolId para saber si un usuario tiene pendingPlayer (registro web).
-    match /pendingPlayerByEmail/{emailKey} {
-      allow create: if isSignedIn() && request.auth.token.email != null
-          && emailKey == request.auth.token.email.lower();
-      allow read: if isSignedIn() && request.auth.token.email != null
-          && emailKey == request.auth.token.email.lower();
-      allow delete: if isSuperAdmin() || (resource != null && resource.data.schoolId != null
-          && (isSchoolAdmin(resource.data.schoolId) || isCoach(resource.data.schoolId)));
+    // --- Reglas principales ---
+
+    match /subcomisiones/{subcomisionId} {
+      allow read: if isSignedIn() && (isGerenteClub() || isStaffOfSubcomision(subcomisionId));
+      allow create, update: if isGerenteClub();
+      allow delete: if false;
     }
 
-    match /schools/{schoolId} {
-      allow read: if true;
-      allow create, update: if isSuperAdmin();
-      allow delete: if false; // Soft delete
-    }
-    
-    match /schools/{schoolId}/users/{userId} {
-        // Staff (admin, coach, editor, viewer) puede listar/leer usuarios de la escuela (ej. para asignar entrenador en horarios).
-        allow read: if isSuperAdmin() || isStaffOfSchool(schoolId) || request.auth.uid == userId;
-        // Admins can write, but only valid roles.
-        allow create, update: if (isSuperAdmin() || isSchoolAdmin(schoolId)) && isValidSchoolUserRole(request.resource.data.role);
-        allow delete: if isSuperAdmin() || isSchoolAdmin(schoolId);
-    }
-    
-    match /schools/{schoolId}/players/{playerId} {
-      // Jugador puede leer su documento si el email coincide o si tiene playerLogin para este jugador (doc sin email aún).
-      allow read: if isSuperAdmin()
-          || isMemberOfSchool(schoolId)
-          || isSchoolAdmin(schoolId)
-          || isCoach(schoolId)
-          || (isSignedIn() && request.auth.token.email != null && resource.data.get('email', '').lower() == request.auth.token.email.lower())
-          || hasPlayerLoginFor(schoolId, playerId);
-      // Solo staff crea jugadores; staff o jugador (email en request = auth email, o playerLogin) pueden actualizar.
-      allow create: if isSuperAdmin() || isSchoolAdmin(schoolId) || isCoach(schoolId);
-      allow update: if isSuperAdmin()
-          || isMemberOfSchool(schoolId)
-          || requestEmailMatchesAuth(schoolId, playerId)
-          || hasPlayerLoginFor(schoolId, playerId);
-      allow delete: if isSuperAdmin() || isSchoolAdmin(schoolId);
+    match /subcomisiones/{subcomisionId}/users/{userId} {
+      allow read: if isSignedIn() && (isGerenteClub() || isStaffOfSubcomision(subcomisionId) || request.auth.uid == userId);
+      allow create, update: if isGerenteClub() || isAdminSubcomision(subcomisionId);
+      allow delete: if isGerenteClub() || isAdminSubcomision(subcomisionId);
     }
 
-    match /schools/{schoolId}/pendingPlayers/{pendingId} {
-        // Super admin, miembros de la escuela, o admins/entrenadores pueden leer y eliminar.
-        allow read, delete: if isSuperAdmin()
-            || isMemberOfSchool(schoolId)
-            || isSchoolAdmin(schoolId)
-            || isCoach(schoolId);
-        // Allow any signed-in user to create a request. This can be tightened later if needed.
-        allow create: if isSignedIn();
-    }
-
-    match /schools/{schoolId}/evaluations/{evalId} {
-      allow get, list: if isSuperAdmin()
-          || isMemberOfSchool(schoolId)
-          || isSchoolAdmin(schoolId)
-          || isCoach(schoolId)
-          || isOwnPlayer(schoolId, resource.data.playerId);
-      // Cualquier miembro de la escuela (admin o coach) puede crear/editar/borrar evaluaciones.
-      allow create, update: if isSuperAdmin() || isSchoolAdmin(schoolId) || isCoach(schoolId) || isMemberOfSchool(schoolId);
-      allow delete: if isSuperAdmin() || isSchoolAdmin(schoolId) || isCoach(schoolId);
-    }
-
-    // --- Other collections ---
-
-    match /schools/{schoolId}/trainings/{trainingId} {
-      // Jugadores necesitan listar entrenamientos para ver su asistencia; permitir lectura a cualquier usuario autenticado.
-      allow read: if isSuperAdmin()
-          || isMemberOfSchool(schoolId)
-          || isSchoolAdmin(schoolId)
-          || isCoach(schoolId)
-          || isSignedIn();
-      allow create, update, delete: if isSuperAdmin() || isSchoolAdmin(schoolId) || isCoach(schoolId);
-    }
-
-    match /schools/{schoolId}/trainings/{trainingId}/attendance/{playerId} {
-      allow read: if isSuperAdmin() || isSchoolAdmin(schoolId) || isCoach(schoolId)
-          || isOwnPlayer(schoolId, playerId);
-      allow write: if isSuperAdmin() || isSchoolAdmin(schoolId) || isCoach(schoolId);
-    }
-    
-    match /schools/{schoolId}/invites/{inviteId} {
-       allow read, write: if isSuperAdmin() || isSchoolAdmin(schoolId);
-    }
-    
-     match /schools/{schoolId}/testTemplates/{templateId} {
-        allow read: if isSuperAdmin()
-            || isMemberOfSchool(schoolId)
-            || isSchoolAdmin(schoolId)
-            || isCoach(schoolId);
-        allow write: if isSuperAdmin() || isSchoolAdmin(schoolId);
-    }
-    
-    match /schools/{schoolId}/reportRuns/{runId} {
-       allow read, write: if isSuperAdmin() || isSchoolAdmin(schoolId);
-    }
-
-    match /schools/{schoolId}/reports/{reportId} {
-        allow read: if isSuperAdmin()
-            || isMemberOfSchool(schoolId)
-            || isSchoolAdmin(schoolId)
-            || isCoach(schoolId);
-        allow write: if isSuperAdmin() || isSchoolAdmin(schoolId);
-    }
-
-    // Configuración de evaluaciones físicas (tests habilitados por edad)
-    match /schools/{schoolId}/physicalAssessmentConfig/{configId} {
-      allow read: if isSuperAdmin()
-          || isMemberOfSchool(schoolId)
-          || isSchoolAdmin(schoolId)
-          || isCoach(schoolId);
-      allow create, update: if isSuperAdmin() || isSchoolAdmin(schoolId) || isCoach(schoolId);
-      allow delete: if isSuperAdmin() || isSchoolAdmin(schoolId);
-    }
-
-    // Configuración de horarios de entrenamiento (slots, categorías, cupos, entrenador)
-    match /schools/{schoolId}/trainingConfig/{configId} {
-      allow read: if isSuperAdmin()
-          || isMemberOfSchool(schoolId)
-          || isSchoolAdmin(schoolId)
-          || isCoach(schoolId);
-      allow create, update: if isSuperAdmin() || isSchoolAdmin(schoolId) || isCoach(schoolId);
-      allow delete: if isSuperAdmin() || isSchoolAdmin(schoolId);
-    }
-
-    // Evaluaciones físicas por jugador
-    match /schools/{schoolId}/physicalAssessments/{assessmentId} {
-      allow read: if isSuperAdmin()
-          || isMemberOfSchool(schoolId)
-          || isSchoolAdmin(schoolId)
-          || isCoach(schoolId)
-          || isOwnPlayer(schoolId, resource.data.playerId);
-      allow create, update, delete: if isSuperAdmin() || isSchoolAdmin(schoolId) || isCoach(schoolId);
-    }
-
-    // Videoteca: videos por jugador (grabados/subidos por el entrenador)
-    match /schools/{schoolId}/playerVideos/{videoId} {
-      allow read: if isSuperAdmin()
-          || isMemberOfSchool(schoolId)
-          || isSchoolAdmin(schoolId)
-          || isCoach(schoolId)
-          || isOwnPlayer(schoolId, resource.data.playerId);
-      allow create, update, delete: if isSuperAdmin() || isSchoolAdmin(schoolId) || isCoach(schoolId);
-    }
-
-    // --- Pagos y Morosidad ---
-
-    // Pagos: admin de escuela puede leer pagos de su schoolId; padre solo de su jugador. Escritura solo desde servidor (Admin SDK).
-    match /payments/{paymentId} {
+    match /subcomisiones/{subcomisionId}/socios/{socioId} {
       allow read: if isSignedIn() && (
-        isSuperAdmin()
-        || (resource.data.schoolId != null && isSchoolAdmin(resource.data.schoolId))
-        || (resource.data.schoolId != null && resource.data.playerId != null && isOwnPlayer(resource.data.schoolId, resource.data.playerId))
+        isGerenteClub()
+        || isStaffOfSubcomision(subcomisionId)
+        || isEditorOrViewer(subcomisionId)
+        || isOwnSocio(subcomisionId, socioId)
+        || hasSocioLoginFor(subcomisionId, socioId)
       );
-      allow write: if false;
+      allow create: if isGerenteClub() || isAdminSubcomision(subcomisionId);
+      allow update: if isGerenteClub() || isAdminSubcomision(subcomisionId) || isOwnSocio(subcomisionId, socioId) || hasSocioLoginFor(subcomisionId, socioId);
+      allow delete: if isGerenteClub() || isAdminSubcomision(subcomisionId);
     }
 
-    // Intenciones de pago: mismo criterio que payments.
-    match /paymentIntents/{intentId} {
+    match /subcomisiones/{subcomisionId}/categorias/{categoriaId} {
+      allow read, write: if isGerenteClub() || isStaffOfSubcomision(subcomisionId);
+    }
+
+    // Evaluaciones de socios
+    match /subcomisiones/{subcomisionId}/evaluations/{evalId} {
+      allow read: if isSignedIn() && (canReadInSubcomision(subcomisionId) || resource.data.socioId != null && (isOwnSocio(subcomisionId, resource.data.socioId) || hasSocioLoginFor(subcomisionId, resource.data.socioId)));
+      allow create, update: if isStaffOfSubcomision(subcomisionId);
+      allow delete: if isStaffOfSubcomision(subcomisionId);
+    }
+
+    // Evaluaciones físicas y config
+    match /subcomisiones/{subcomisionId}/physicalAssessments/{docId} {
+      allow read: if isSignedIn() && (canReadInSubcomision(subcomisionId) || resource.data.socioId != null && (isOwnSocio(subcomisionId, resource.data.socioId) || hasSocioLoginFor(subcomisionId, resource.data.socioId)));
+      allow create, update: if isStaffOfSubcomision(subcomisionId);
+      allow delete: if isStaffOfSubcomision(subcomisionId);
+    }
+    match /subcomisiones/{subcomisionId}/physicalAssessmentConfig/{docId} {
+      allow read: if isSignedIn() && canReadInSubcomision(subcomisionId);
+      allow write: if isStaffOfSubcomision(subcomisionId);
+    }
+
+    // Videoteca de socios
+    match /subcomisiones/{subcomisionId}/socioVideos/{videoId} {
+      allow read: if isSignedIn() && (canReadInSubcomision(subcomisionId) || resource.data.socioId != null && (isOwnSocio(subcomisionId, resource.data.socioId) || hasSocioLoginFor(subcomisionId, resource.data.socioId)));
+      allow create, update, delete: if isStaffOfSubcomision(subcomisionId);
+    }
+
+    // Config mensualidad y pagos (staff)
+    match /subcomisiones/{subcomisionId}/clubFeeConfig/{docId} {
+      allow read, write: if isStaffOfSubcomision(subcomisionId);
+    }
+    match /subcomisiones/{subcomisionId}/paymentConfig/{docId} {
+      allow read, write: if isStaffOfSubcomision(subcomisionId);
+    }
+
+    // Horarios de entrenamiento
+    match /subcomisiones/{subcomisionId}/trainingConfig/{docId} {
+      allow read, write: if isStaffOfSubcomision(subcomisionId);
+    }
+    match /subcomisiones/{subcomisionId}/trainings/{trainingId} {
+      allow read, write: if isStaffOfSubcomision(subcomisionId);
+      match /attendance/{socioId} {
+        allow read, write: if isStaffOfSubcomision(subcomisionId);
+      }
+    }
+
+    // Soporte: staff y dueño del ticket
+    match /subcomisiones/{subcomisionId}/supportTickets/{ticketId} {
       allow read: if isSignedIn() && (
-        isSuperAdmin()
-        || (resource.data.schoolId != null && isSchoolAdmin(resource.data.schoolId))
-        || (resource.data.schoolId != null && resource.data.playerId != null && isOwnPlayer(resource.data.schoolId, resource.data.playerId))
+        isStaffOfSubcomision(subcomisionId)
+        || resource.data.userId == request.auth.uid
       );
-      allow write: if false;
+      allow create: if isSignedIn() && (isStaffOfSubcomision(subcomisionId) || request.resource.data.userId == request.auth.uid);
+      allow update: if isSignedIn() && (isStaffOfSubcomision(subcomisionId) || resource.data.userId == request.auth.uid);
+      allow delete: if false;
+      match /supportTicketEvents/{eventId} {
+        allow read: if isSignedIn() && (isStaffOfSubcomision(subcomisionId) || get(/databases/$(database)/documents/subcomisiones/$(subcomisionId)/supportTickets/$(ticketId)).data.userId == request.auth.uid);
+        allow create: if isSignedIn() && (isStaffOfSubcomision(subcomisionId) || get(/databases/$(database)/documents/subcomisiones/$(subcomisionId)/supportTickets/$(ticketId)).data.userId == request.auth.uid);
+        allow update, delete: if false;
+      }
     }
 
-    // Eventos de email (idempotencia): solo servidor escribe; cliente no accede.
-    match /emailEvents/{eventId} {
+    // Registro pendiente (solicitudes de alta)
+    match /subcomisiones/{subcomisionId}/pendingPlayers/{socioId} {
+      allow read: if isStaffOfSubcomision(subcomisionId);
+      allow create: if isSignedIn();
+      allow update, delete: if isStaffOfSubcomision(subcomisionId);
+    }
+
+    match /comercios/{comercioId} {
+      allow read: if isSignedIn() && (isGerenteClub() || (request.auth.uid == comercioId));
+      allow create, update, delete: if isGerenteClub();
+    }
+
+    match /usos_qr/{usoId} {
+      allow create: if isSignedIn() && isComercio();
+      allow read: if isGerenteClub();
+      allow update, delete: if false;
+    }
+
+    // --- Viajes (Regatas+) ---
+    match /viajes/{viajeId} {
+      allow read: if isSignedIn() && (isGerenteClub()
+        || (resource.data.subcomisionId != null
+            && isAdminSubcomision(resource.data.subcomisionId))
+        || (resource.data.subcomisionId != null
+            && isEncargadoDeportivo(resource.data.subcomisionId)));
+      allow create: if isSignedIn() && request.resource.data.subcomisionId != null
+        && (isAdminSubcomision(request.resource.data.subcomisionId) || isGerenteClub());
+      allow update: if isSignedIn() && resource.data.subcomisionId != null
+        && (isAdminSubcomision(resource.data.subcomisionId) || isGerenteClub());
+      allow delete: if isGerenteClub();
+
+      match /pagos/{pagoId} {
+        allow read: if isSignedIn() && (
+          isGerenteClub()
+          || (get(/databases/$(database)/documents/viajes/$(viajeId)).data.subcomisionId != null
+              && isAdminSubcomision(get(/databases/$(database)/documents/viajes/$(viajeId)).data.subcomisionId))
+          || (get(/databases/$(database)/documents/viajes/$(viajeId)).data.subcomisionId != null
+              && isEncargadoDeportivo(get(/databases/$(database)/documents/viajes/$(viajeId)).data.subcomisionId))
+          || (resource.data.socioId != null
+              && get(/databases/$(database)/documents/viajes/$(viajeId)).data.subcomisionId != null
+              && hasSocioLoginFor(get(/databases/$(database)/documents/viajes/$(viajeId)).data.subcomisionId, resource.data.socioId)));
+        allow create, update: if isSignedIn() && get(/databases/$(database)/documents/viajes/$(viajeId)).data.subcomisionId != null
+          && (isAdminSubcomision(get(/databases/$(database)/documents/viajes/$(viajeId)).data.subcomisionId) || isGerenteClub());
+      }
+
+      match /documentacion/{socioId} {
+        allow read, write: if isSignedIn() && get(/databases/$(database)/documents/viajes/$(viajeId)).data.subcomisionId != null
+          && (isAdminSubcomision(get(/databases/$(database)/documents/viajes/$(viajeId)).data.subcomisionId)
+              || isEncargadoDeportivo(get(/databases/$(database)/documents/viajes/$(viajeId)).data.subcomisionId)
+              || isGerenteClub());
+      }
+    }
+
+    // Configuración global de la plataforma (settings, plantillas, etc.)
+    match /platformConfig/{docId} {
+      allow read: if isSignedIn() && (
+        isGerenteClub()
+        || docId == 'physicalAssessmentTemplate'
+      );
+      allow write: if isGerenteClub();
+    }
+
+    // Sesiones WhatsApp de Regatas+ (solo backend escribe, no exponer a clientes)
+    match /wa_sessions_regatas/{phone} {
       allow read, write: if false;
     }
 
-    // Configuración de cuotas por escuela
-    match /schools/{schoolId}/paymentConfig/{configId} {
-      allow read: if isSuperAdmin() || isSchoolAdmin(schoolId) || isCoach(schoolId);
-      allow create, update: if isSuperAdmin() || isSchoolAdmin(schoolId);
-      allow delete: if false;
+    // Solicitudes de acceso (registro / alta como socio)
+    match /accessRequests/{requestId} {
+      allow read: if isSignedIn() && (isGerenteClub() || resource.data.uid == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && (isGerenteClub() || resource.data.uid == request.auth.uid);
+      allow delete: if isGerenteClub();
     }
 
-    // Configuración de mensualidad de escuela a plataforma (solo super admin escribe)
-    match /schools/{schoolId}/schoolFeeConfig/{configId} {
-      allow read: if isSuperAdmin() || isSchoolAdmin(schoolId) || isCoach(schoolId);
-      allow create, update: if isSuperAdmin();
-      allow delete: if false;
-    }
-
-    // Pagos de mensualidad de escuelas a la plataforma (solo servidor escribe; super admin y escuela leen)
-    match /schoolFeePayments/{paymentId} {
-      allow read: if isSuperAdmin()
-        || (resource.data.schoolId != null && isSchoolAdmin(resource.data.schoolId))
-        || (resource.data.schoolId != null && isCoach(resource.data.schoolId));
-      allow write: if false;
-    }
-
-    // Conexión OAuth Mercado Pago por escuela (tokens; solo servidor debería escribir en producción)
-    match /schools/{schoolId}/mercadopagoConnection/{docId} {
-      allow read: if isSuperAdmin() || isSchoolAdmin(schoolId);
-      allow create, update: if isSuperAdmin() || isSchoolAdmin(schoolId);
-      allow delete: if false;
-    }
-
-    // --- Centro de Soporte (Support Center) ---
-
-    // Flujos guiados: lectura para cualquier autenticado; escritura solo superadmin.
-    match /supportFlows/{flowId} {
+    // Index email -> solicitud pendiente (evitar duplicados)
+    match /pendingSocioByEmail/{emailKey} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin();
+      allow create: if isSignedIn();
+      allow delete: if isGerenteClub() || (resource.data.subcomisionId != null && isStaffOfSubcomision(resource.data.subcomisionId));
     }
 
-    // Conversaciones de soporte por escuela: el usuario crea/actualiza la suya; admins pueden leer.
-    match /schools/{schoolId}/supportConversations/{conversationId} {
-      allow read: if isMemberOfSchool(schoolId)
-          && (resource.data.userId == request.auth.uid || isSchoolAdmin(schoolId) || isSuperAdmin());
-      allow create: if isMemberOfSchool(schoolId) && request.resource.data.userId == request.auth.uid;
-      allow update: if isMemberOfSchool(schoolId)
-          && (resource.data.userId == request.auth.uid || isSchoolAdmin(schoolId) || isSuperAdmin());
-      allow delete: if isSuperAdmin() || isSchoolAdmin(schoolId);
+    // Compat: schools/ (legacy) - mismo modelo que subcomisiones
+    match /schools/{schoolId}/trainings/{trainingId} {
+      allow read, write: if isStaffOfSubcomision(schoolId);
+      match /attendance/{socioId} {
+        allow read, write: if isStaffOfSubcomision(schoolId);
+      }
     }
-
-    // Contador de tickets por escuela (para número secuencial en transacción).
-    match /schools/{schoolId}/supportTicketCounter/counter {
-      allow read, update: if isMemberOfSchool(schoolId);
-      allow create: if isMemberOfSchool(schoolId);
-      allow delete: if false;
+    match /schools/{schoolId}/trainingConfig/{docId} {
+      allow read, write: if isStaffOfSubcomision(schoolId);
     }
-
-    // Tickets de soporte por escuela: usuario crea y lee los suyos; solo operador (school_admin/superadmin) actualiza.
-    // Tickets de soporte técnico: solo superadmin puede actualizar (resolver, asignar, notas).
+    // schools/players (legacy) - mismo modelo que subcomisiones/socios
+    match /schools/{schoolId}/players/{playerId} {
+      allow read: if isSignedIn() && (
+        isGerenteClub()
+        || isStaffOfSubcomision(schoolId)
+        || (exists(/databases/$(database)/documents/schools/$(schoolId)/players/$(playerId))
+            && get(/databases/$(database)/documents/schools/$(schoolId)/players/$(playerId)).data.get('email', '').lower() == request.auth.token.email.lower())
+        || hasSocioLoginFor(schoolId, playerId)
+      );
+      allow create, update: if isGerenteClub() || isAdminSubcomision(schoolId);
+      allow delete: if isGerenteClub() || isAdminSubcomision(schoolId);
+    }
+    match /schools/{schoolId}/pendingPlayers/{socioId} {
+      allow read: if isStaffOfSubcomision(schoolId);
+      allow create: if isSignedIn();
+      allow update, delete: if isStaffOfSubcomision(schoolId);
+    }
+    match /schools/{schoolId}/users/{userId} {
+      allow read: if isSignedIn() && (isGerenteClub() || isStaffOfSubcomision(schoolId) || request.auth.uid == userId);
+      allow create, update: if isGerenteClub() || isAdminSubcomision(schoolId);
+      allow delete: if isGerenteClub() || isAdminSubcomision(schoolId);
+    }
     match /schools/{schoolId}/supportTickets/{ticketId} {
-      allow read: if isMemberOfSchool(schoolId)
-          && (resource.data.userId == request.auth.uid || isSuperAdmin());
-      allow create: if isMemberOfSchool(schoolId) && request.resource.data.userId == request.auth.uid;
-      allow update: if isSuperAdmin();
+      allow read: if isSignedIn() && (isStaffOfSubcomision(schoolId) || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && (isStaffOfSubcomision(schoolId) || request.resource.data.userId == request.auth.uid);
+      allow update: if isSignedIn() && (isStaffOfSubcomision(schoolId) || resource.data.userId == request.auth.uid);
       allow delete: if false;
+      match /supportTicketEvents/{eventId} {
+        allow read, create: if isSignedIn() && (isStaffOfSubcomision(schoolId) || get(/databases/$(database)/documents/schools/$(schoolId)/supportTickets/$(ticketId)).data.userId == request.auth.uid);
+        allow update, delete: if false;
+      }
     }
 
-    // Eventos de auditoría del ticket: solo superadmin crea al actualizar ticket.
-    match /schools/{schoolId}/supportTickets/{ticketId}/supportTicketEvents/{eventId} {
-      allow read: if isMemberOfSchool(schoolId)
-          && (get(/databases/$(database)/documents/schools/$(schoolId)/supportTickets/$(ticketId)).data.userId == request.auth.uid
-              || isSuperAdmin());
-      allow create: if isSuperAdmin();
-      allow update, delete: if false;
-    }
-
-    // --- Configuración global y auditoría (solo super admin) ---
-
-    match /platformConfig/{configId} {
-      allow read: if isSignedIn();
-      allow write: if isSuperAdmin();
-    }
-
-    match /auditLog/{entryId} {
-      allow read: if isSuperAdmin();
-      allow create: if isSuperAdmin();
-      allow update, delete: if false;
-    }
-
-    // --- Notas (posts) ---
-    // Lectura: públicos si published; staff de la escuela si draft/archived
+    // Posts / Notas (colección top-level, subcomisionId en cada doc)
     match /posts/{postId} {
-      allow read: if resource.data.status == 'published'
-        || (isSignedIn() && resource.data.schoolId != null && isStaffOfSchool(resource.data.schoolId));
-      allow write: if false;  // Solo Admin SDK vía API routes
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.subcomisionId != null && (isGerenteClub() || isStaffOfSubcomision(request.resource.data.subcomisionId) || isEditorOrViewer(request.resource.data.subcomisionId));
+      allow update, delete: if isSignedIn() && resource.data.subcomisionId != null && (isGerenteClub() || isStaffOfSubcomision(resource.data.subcomisionId) || isEditorOrViewer(resource.data.subcomisionId));
     }
   }
 }

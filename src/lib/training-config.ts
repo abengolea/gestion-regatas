@@ -1,6 +1,6 @@
 /**
  * Configuración de horarios de entrenamiento por escuela.
- * Almacenada en schools/{schoolId}/trainingConfig/default
+ * Almacenada en subcomisiones/{subcomisionId}/trainingConfig/default
  */
 
 import type { Firestore } from "firebase-admin/firestore";

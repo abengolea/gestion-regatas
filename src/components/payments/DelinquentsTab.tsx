@@ -39,7 +39,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { DelinquentInfo } from "@/lib/types";
 
 function delinquentKey(d: DelinquentInfo): string {
-  return `${d.playerId}:${d.period}`;
+  return `${d.socioId ?? d.playerId}:${d.period}`;
 }
 
 const REGISTRATION_PERIOD = "inscripcion";
@@ -71,11 +71,12 @@ function getYears(): number[] {
 }
 
 interface DelinquentsTabProps {
-  schoolId: string;
+  subcomisionId: string;
   getToken: () => Promise<string | null>;
 }
 
-export function DelinquentsTab({ schoolId, getToken }: DelinquentsTabProps) {
+export function DelinquentsTab({ subcomisionId, getToken }: DelinquentsTabProps) {
+  const schoolId = subcomisionId;
   const [delinquents, setDelinquents] = useState<DelinquentInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);

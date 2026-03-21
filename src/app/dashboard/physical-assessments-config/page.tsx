@@ -59,7 +59,7 @@ export default function PhysicalAssessmentsConfigPage() {
   const { profile, isReady: profileReady, activeSchoolId } = useUserProfile();
   const schoolId = activeSchoolId ?? "";
   const { data: config, loading: configLoading } = useDoc<PhysicalAssessmentConfig>(
-    schoolId ? `schools/${schoolId}/physicalAssessmentConfig/default` : ""
+    schoolId ? `subcomisiones/${schoolId}/physicalAssessmentConfig/default` : ""
   );
   const { data: globalTemplate } = useDoc<PhysicalAssessmentTemplate & { id: string }>(
     `platformConfig/${TEMPLATE_DOC_ID}`
@@ -71,6 +71,7 @@ export default function PhysicalAssessmentsConfigPage() {
   const [editingField, setEditingField] = useState<FieldDef | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ group: PhysicalAgeGroup; key: string } | null>(null);
 
+  const isCoachOrAdmin = profile?.role === "admin_subcomision" || profile?.role === "encargado_deportivo";
   const isLoading = !profileReady || (schoolId && configLoading);
 
   if (!profileReady) {
@@ -100,7 +101,7 @@ export default function PhysicalAssessmentsConfigPage() {
   const enabledByGroup = config?.enabledFieldsByAgeGroup ?? {};
   const customByGroup = config?.customFieldsByAgeGroup ?? {};
   const overridesByGroup = config?.fieldOverridesByAgeGroup ?? {};
-  const isCoachOrAdmin = profile?.role === "coach" || profile?.role === "school_admin";
+  const isEncargadoDeportivoOrAdmin = profile?.role === "encargado_deportivo" || profile?.role === "admin_subcomision";
 
   const toggleField = (ageGroup: PhysicalAgeGroup, fieldKey: string, enabled: boolean) => {
     if (fieldKey.startsWith("custom_")) return; // custom fields no se desactivan, se eliminan
@@ -204,7 +205,7 @@ export default function PhysicalAssessmentsConfigPage() {
   }) => {
     if (!profile) return;
     try {
-      const ref = doc(firestore, `schools/${schoolId}/physicalAssessmentConfig`, "default");
+      const ref = doc(firestore, `subcomisiones/${schoolId}/physicalAssessmentConfig`, "default");
       await setDoc(
         ref,
         {

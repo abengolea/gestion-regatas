@@ -59,7 +59,7 @@ export default function RecordVideoPage() {
       <RecordOrUploadVideoDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        schoolId={activeSchoolId}
+        subcomisionId={activeSchoolId}
         initialPlayerId={null}
         initialPlayerName=""
         embedded={false}

@@ -6,12 +6,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Sparkles, Loader2, Construction } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
-import type { Player, Evaluation } from '@/lib/types';
+import type { Socio, Evaluation } from '@/lib/types';
 import { generateComparativeAnalysis, type GenerateComparativeAnalysisInput } from '@/ai/flows/physical-assessment-comparative-analytics';
 
 
 interface AnalyticsTabProps {
-  player: Player;
+  player: Socio;
   evaluations: Evaluation[];
 }
 
@@ -56,7 +56,7 @@ export function AnalyticsTab({ player, evaluations }: AnalyticsTabProps) {
     
     const input: GenerateComparativeAnalysisInput = {
         playerName: `${player.firstName} ${player.lastName}`,
-        playerData: {
+        socioData: {
             physical: latestEvaluation.physical,
             technical: latestEvaluation.technical,
             tactical: latestEvaluation.tactical,

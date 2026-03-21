@@ -2,7 +2,7 @@
  * Utilidades compartidas para slots de entrenamiento.
  */
 
-import type { Player, TrainingSlot } from "./types";
+import type { Socio, TrainingSlot } from "./types";
 import {
   getCategoryLabel,
   getBirthYear,
@@ -24,8 +24,8 @@ export function getSlotKey(slot: TrainingSlot): string {
 }
 
 /** Obtiene los jugadores asignados a un slot según reglas + manualPlayerIds. */
-export function getPlayersInSlot(slot: TrainingSlot, activePlayers: Player[]): Player[] {
-  const byRules: Player[] = [];
+export function getPlayersInSlot(slot: TrainingSlot, activePlayers: Socio[]): Socio[] {
+  const byRules: Socio[] = [];
 
   if (slot.tipoCategoria === "arqueros") {
     byRules.push(...activePlayers.filter((p) => p.posicion_preferida === "arquero"));
@@ -59,6 +59,6 @@ export function getPlayersInSlot(slot: TrainingSlot, activePlayers: Player[]): P
   const byRulesIds = new Set(byRules.map((p) => p.id));
   const manualOnly = (slot.manualPlayerIds ?? [])
     .map((id) => activePlayers.find((p) => p.id === id))
-    .filter((p): p is Player => !!p && !byRulesIds.has(p.id));
+    .filter((p): p is Socio => !!p && !byRulesIds.has(p.id));
   return [...byRules, ...manualOnly];
 }

@@ -15,7 +15,7 @@ export default function NotasAdminPage() {
   const { app } = useFirebase();
   const [token, setToken] = useState<string | null>(null);
 
-  const isStaff = profile?.role === "school_admin" || profile?.role === "coach" || profile?.role === "editor" || profile?.role === "viewer";
+  const isStaff = profile?.role === "admin_subcomision" || profile?.role === "encargado_deportivo" || profile?.role === "editor" || profile?.role === "viewer";
 
   useEffect(() => {
     if (!isReady) return;
@@ -53,7 +53,7 @@ export default function NotasAdminPage() {
             Gestiona las publicaciones de tu escuela.
           </p>
         </div>
-        {(profile?.role === "school_admin" || profile?.role === "coach" || profile?.role === "editor" || isSuperAdmin) && (
+        {(profile?.role === "admin_subcomision" || profile?.role === "encargado_deportivo" || profile?.role === "editor" || isSuperAdmin) && (
           <Button asChild>
             <a href="/dashboard/notas/nueva">
               <Plus className="mr-2 h-4 w-4" />

@@ -10,12 +10,12 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useCollection, useFirestore } from "@/firebase";
-import type { SchoolUser } from "@/lib/types";
+import type { SubcomisionUser } from "@/lib/types";
 import { Skeleton } from "../ui/skeleton";
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Users, MoreHorizontal, Loader2, Edit } from "lucide-react";
-import { AddSchoolUserDialog } from "./AddSchoolUserDialog";
+import { AddSubcomisionUserDialog } from "./AddSchoolUserDialog";
 import { Button } from "../ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "../ui/dropdown-menu";
 import {
@@ -31,22 +31,23 @@ import {
 import { doc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useUserProfile } from "@/firebase";
-import { EditSchoolUserDialog } from "./EditSchoolUserDialog";
+import { EditSubcomisionUserDialog } from "./EditSchoolUserDialog";
 
-export function SchoolUsersList({ schoolId }: { schoolId: string }) {
-  const { data: users, loading: usersLoading } = useCollection<SchoolUser>(`schools/${schoolId}/users`, { orderBy: ['displayName', 'asc'] });
+export function SubcomisionUsersList({ schoolId, subcomisionId }: { schoolId?: string; subcomisionId?: string }) {
+  const id = subcomisionId ?? schoolId ?? "";
+  const { data: users, loading: usersLoading } = useCollection<SubcomisionUser>(`subcomisiones/${id}/users`, { orderBy: ['displayName', 'asc'] });
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user } = useUserProfile();
 
-  const [userToDelete, setUserToDelete] = useState<SchoolUser | null>(null);
+  const [userToDelete, setUserToDelete] = useState<SubcomisionUser | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
   const loading = usersLoading;
 
-  const roleDisplay: { [key in SchoolUser['role']]: string } = {
-    school_admin: 'Admin. de Escuela',
-    coach: 'Entrenador',
+  const roleDisplay: { [key in SubcomisionUser['role']]: string } = {
+    admin_subcomision: 'Admin. de Escuela',
+    encargado_deportivo: 'Entrenador',
     editor: 'Editor',
     viewer: 'Visor',
     player: 'Jugador',
@@ -56,7 +57,7 @@ export function SchoolUsersList({ schoolId }: { schoolId: string }) {
     if (!userToDelete) return;
 
     setIsDeleting(true);
-    const userRef = doc(firestore, `schools/${schoolId}/users`, userToDelete.id);
+    const userRef = doc(firestore, `subcomisiones/${id}/users`, userToDelete.id);
 
     try {
       await deleteDoc(userRef);
@@ -89,7 +90,7 @@ export function SchoolUsersList({ schoolId }: { schoolId: string }) {
                   {loading ? 'Cargando usuarios...' : `Hay ${users?.length || 0} usuarios asignados a esta escuela.`}
               </CardDescription>
           </div>
-          <AddSchoolUserDialog schoolId={schoolId} />
+          <AddSubcomisionUserDialog subcomisionId={id} />
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
           <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 rounded-b-lg sm:rounded-none border-t sm:border-t-0">
@@ -116,7 +117,7 @@ export function SchoolUsersList({ schoolId }: { schoolId: string }) {
                   <TableCell className="font-medium">{userRow.displayName}</TableCell>
                   <TableCell>{userRow.email}</TableCell>
                   <TableCell>
-                      <Badge variant={userRow.role === 'school_admin' ? 'default' : 'secondary'}>{roleDisplay[userRow.role] || userRow.role}</Badge>
+                      <Badge variant={userRow.role === 'admin_subcomision' ? 'default' : 'secondary'}>{roleDisplay[userRow.role] || userRow.role}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -128,12 +129,12 @@ export function SchoolUsersList({ schoolId }: { schoolId: string }) {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                <EditSchoolUserDialog schoolId={schoolId} user={userRow}>
+                                <EditSubcomisionUserDialog schoolId={id} user={userRow}>
                                     <DropdownMenuItem onSelect={e => e.preventDefault()}>
                                         <Edit className="mr-2 h-4 w-4" />
                                         <span>Editar Usuario</span>
                                     </DropdownMenuItem>
-                                </EditSchoolUserDialog>
+                                </EditSubcomisionUserDialog>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive focus:bg-destructive/10 focus:text-destructive"

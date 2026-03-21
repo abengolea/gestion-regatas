@@ -19,8 +19,12 @@ export type PaymentType = 'monthly' | 'registration' | 'clothing';
 
 export interface Payment {
   id: string;
-  playerId: string;
-  schoolId: string;
+  socioId: string;
+  subcomisionId: string;
+  /** @deprecated Use socioId. Firestore compat. */
+  playerId?: string;
+  /** @deprecated Use subcomisionId. Firestore compat. */
+  schoolId?: string;
   period: string; // YYYY-MM para cuota mensual; "inscripcion" para inscripción; "ropa-N" para pago de ropa cuota N
   amount: number;
   currency: string;
@@ -65,7 +69,7 @@ export interface EmailEvent {
   idempotencyKey: string; // Para evitar duplicados: type-playerId-period
 }
 
-/** Configuración de cuotas y mora por escuela. Almacenada en schools/{schoolId}/paymentConfig/default */
+/** Configuración de cuotas y mora por escuela. Almacenada en subcomisiones/{schoolId}/paymentConfig/default */
 export interface PaymentConfig {
   id: string;
   amount: number;
@@ -118,6 +122,7 @@ export interface MercadoPagoConnection {
 
 /** Representación de un moroso para el panel admin. */
 export interface DelinquentInfo {
+  socioId?: string;
   playerId: string;
   playerName: string;
   playerEmail?: string;

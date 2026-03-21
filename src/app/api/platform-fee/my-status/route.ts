@@ -1,15 +1,15 @@
 /**
- * GET /api/platform-fee/my-status?schoolId=xxx
+ * GET /api/platform-fee/my-status?subcomisionId=xxx
  * Obtiene el estado de mensualidad de la escuela (para mostrar aviso si está en mora).
- * Acceso: admin/coach de la escuela o super admin.
+ * Acceso: admin/encargado_deportivo de la escuela o super admin.
  */
 
 import { NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import {
   getOrCreatePlatformFeeConfig,
-  getOrCreateSchoolFeeConfig,
-  findApprovedSchoolFeePayment,
+  getOrCreateClubFeeConfig,
+  findApprovedClubFeePayment,
   getSchoolMonthlyAmount,
   getCurrentPeriod,
 } from '@/lib/payments/platform-fee';
@@ -42,16 +42,17 @@ export async function GET(request: Request) {
 
     // Verificar que el usuario pertenece a la escuela o es super admin
     const platformSnap = await db.collection('platformUsers').doc(auth.uid).get();
-    const isSuperAdmin = (platformSnap.data() as { super_admin?: boolean })?.super_admin === true;
+    const platformData = platformSnap.data() as { gerente_club?: boolean; super_admin?: boolean } | undefined;
+    const isSuperAdmin = (platformData?.gerente_club ?? platformData?.super_admin) === true;
 
-    const userInSchool = await db.collection('schools').doc(schoolId).collection('users').doc(auth.uid).get();
+    const userInSchool = await db.collection('subcomisiones').doc(schoolId).collection('users').doc(auth.uid).get();
     const userData = userInSchool.data() as { role?: string } | undefined;
-    const isSchoolAdmin = userData?.role === 'school_admin';
-    if (!isSuperAdmin && (!userInSchool.exists || !isSchoolAdmin)) {
+    const isSubcomisionAdmin = userData?.role === 'admin_subcomision';
+    if (!isSuperAdmin && (!userInSchool.exists || !isSubcomisionAdmin)) {
       return NextResponse.json({ error: 'Solo el administrador de la escuela puede ver el estado de mensualidad' }, { status: 403 });
     }
 
-    const schoolConfig = await getOrCreateSchoolFeeConfig(db, schoolId);
+    const schoolConfig = await getOrCreateClubFeeConfig(db, schoolId);
     if (schoolConfig.isBonified) {
       return NextResponse.json({
         isBonified: true,
@@ -75,7 +76,7 @@ export async function GET(request: Request) {
     const suspensionDays = platformConfig.delinquencyDaysSuspension ?? 30;
     const lateFeePct = (platformConfig.lateFeePercent ?? 5) / 100;
 
-    const schoolSnap = await db.collection('schools').doc(schoolId).get();
+    const schoolSnap = await db.collection('subcomisiones').doc(schoolId).get();
     const createdAt = schoolSnap.exists && schoolSnap.data()?.createdAt
       ? (schoolSnap.data()!.createdAt as { toDate?: () => Date })?.toDate?.() ?? new Date()
       : new Date();
@@ -96,7 +97,7 @@ export async function GET(request: Request) {
       const dueDate = getDueDate(period, dueDay);
       if (dueDate > now) continue;
 
-      const hasPaid = await findApprovedSchoolFeePayment(db, schoolId, period);
+      const hasPaid = await findApprovedClubFeePayment(db, schoolId, period);
       if (hasPaid) continue;
 
       const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (24 * 60 * 60 * 1000));

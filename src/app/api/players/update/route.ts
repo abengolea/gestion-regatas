@@ -1,5 +1,5 @@
 /**
- * POST /api/players/update
+ * POST /api/socios/update
  * Actualiza el documento de un jugador usando Admin SDK (evita reglas del cliente).
  * Autorizado si: el usuario es el jugador (su email coincide con updateData.email) o es staff de la escuela.
  */
@@ -10,8 +10,10 @@ import { verifyIdToken } from "@/lib/auth-server";
 import { Timestamp } from "firebase-admin/firestore";
 
 type UpdatePayload = {
-  schoolId: string;
-  playerId: string;
+  schoolId?: string;
+  subcomisionId?: string;
+  playerId?: string;
+  socioId?: string;
   updateData: {
     firstName: string;
     lastName: string;
@@ -56,19 +58,24 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as UpdatePayload;
-    const { schoolId, playerId, updateData: raw, oldEmail } = body;
+    const schoolId = body.subcomisionId ?? body.schoolId;
+    const playerId = body.socioId ?? body.playerId;
+    const { updateData: raw, oldEmail } = body;
     if (!schoolId || !playerId || !raw) {
       return NextResponse.json({ error: "Faltan schoolId, playerId o updateData" }, { status: 400 });
     }
 
     const db = getAdminFirestore();
 
-    // Autorización: jugador (email en updateData coincide) o staff (está en schools/schoolId/users)
+    // Autorización: jugador (email en updateData coincide) o staff (está en subcomisiones/schoolId/users)
     const isPlayerSelf =
       raw.email != null &&
       raw.email.trim().toLowerCase() === userEmail.trim().toLowerCase();
     const userInSchool = await db
-      .doc(`schools/${schoolId}/users/${uid}`)
+      .collection('subcomisiones')
+      .doc(schoolId)
+      .collection('users')
+      .doc(uid)
       .get()
       .then((s) => s.exists);
 
@@ -88,14 +95,19 @@ export async function POST(request: Request) {
       birthDate,
     };
 
-    const playerRef = db.doc(`schools/${schoolId}/players/${playerId}`);
+    const playerRef = db.collection('subcomisiones').doc(schoolId).collection('socios').doc(playerId);
     await playerRef.update(updateData);
 
     const newEmailNorm = raw.email?.trim().toLowerCase() || null;
     const oldEmailNorm = oldEmail?.trim().toLowerCase() || null;
 
     if (newEmailNorm) {
-      await db.doc(`playerLogins/${newEmailNorm}`).set({ schoolId, playerId });
+      await db.doc(`socioLogins/${newEmailNorm}`).set({
+        subcomisionId: schoolId,
+        socioId: playerId,
+        schoolId,
+        playerId,
+      });
     }
     if (oldEmailNorm && oldEmailNorm !== newEmailNorm) {
       await db.doc(`playerLogins/${oldEmailNorm}`).delete();

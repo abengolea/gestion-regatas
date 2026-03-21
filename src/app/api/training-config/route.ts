@@ -1,9 +1,9 @@
 /**
- * GET /api/training-config?schoolId=...
+ * GET /api/training-config?subcomisionId=...
  * Obtiene la configuración de horarios de entrenamiento.
  *
  * PUT /api/training-config
- * Actualiza la configuración (admin o coach).
+ * Actualiza la configuración (admin o encargado_deportivo).
  */
 
 import { NextResponse } from "next/server";

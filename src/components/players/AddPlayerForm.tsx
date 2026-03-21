@@ -133,7 +133,7 @@ export function AddPlayerForm() {
                 authUserCreated = true;
             }
 
-            const playerData = {
+            const socioData = {
                 firstName: values.firstName,
                 lastName: values.lastName,
                 birthDate: Timestamp.fromDate(values.birthDate),
@@ -152,15 +152,15 @@ export function AddPlayerForm() {
                 createdBy: profile.uid,
             };
 
-            const playersCollectionRef = collection(firestore, `schools/${activeSchoolId}/players`);
-            const newPlayerRef = doc(playersCollectionRef);
+            const sociosCollectionRef = collection(firestore, `subcomisiones/${activeSchoolId}/socios`);
+            const newSocioRef = doc(sociosCollectionRef);
             const batch = writeBatch(firestore);
-            batch.set(newPlayerRef, playerData);
+            batch.set(newSocioRef, socioData);
 
             if (emailNorm) {
-                batch.set(doc(firestore, "playerLogins", emailNorm), {
-                    schoolId: activeSchoolId,
-                    playerId: newPlayerRef.id,
+                batch.set(doc(firestore, "socioLogins", emailNorm), {
+                    subcomisionId: activeSchoolId,
+                    socioId: newSocioRef.id,
                 });
             }
 
@@ -168,8 +168,8 @@ export function AddPlayerForm() {
 
             if (pendingPhotoFile) {
                 try {
-                    const photoUrl = await uploadPlayerPhoto(storage, activeSchoolId, newPlayerRef.id, pendingPhotoFile);
-                    await updateDoc(newPlayerRef, { photoUrl });
+                    const photoUrl = await uploadPlayerPhoto(storage, activeSchoolId, newSocioRef.id, pendingPhotoFile);
+                    await updateDoc(newSocioRef, { photoUrl });
                 } catch (photoErr) {
                     toast({
                         variant: "destructive",

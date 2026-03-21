@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileText, Upload, ExternalLink, CheckCircle, UserX, Loader2, XCircle } from "lucide-react";
 import { useCollection, useUserProfile, useUser } from "@/firebase";
-import type { Player, MedicalRecord } from "@/lib/types";
+import type { Socio, MedicalRecord } from "@/lib/types";
 import { isMedicalRecordApproved, isMedicalRecordRejected } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MedicalRecordField } from "@/components/players/MedicalRecordField";
@@ -45,11 +45,11 @@ export default function MedicalRecordsPage() {
   const [refreshingPlayerId, setRefreshingPlayerId] = useState<string | null>(null);
 
   const schoolId = activeSchoolId;
-  const isStaff = profile?.role === "school_admin" || profile?.role === "coach";
+  const isStaff = profile?.role === "admin_subcomision" || profile?.role === "encargado_deportivo";
   const canList = isReady && schoolId && isStaff;
 
-  const { data: players, loading } = useCollection<Player>(
-    canList ? `schools/${schoolId}/players` : "",
+  const { data: players, loading } = useCollection<Socio>(
+    canList ? `subcomisiones/${schoolId}/socios` : "",
     { orderBy: ["lastName", "asc"] }
   );
 
@@ -191,7 +191,7 @@ export default function MedicalRecordsPage() {
                           <MedicalRecordInlineUpload
                             schoolId={schoolId}
                             playerId={player.id}
-                            playerName={`${player.firstName} ${player.lastName}`}
+                            playerName={`${(player as Socio & { firstName?: string }).firstName ?? (player as Socio).nombre ?? ""} ${(player as Socio & { lastName?: string }).lastName ?? (player as Socio).apellido ?? ""}`.trim() || "Socio"}
                             onSuccess={() => setRefreshingPlayerId(player.id)}
                           />
                         </div>
@@ -331,7 +331,7 @@ function PendingReviewRowActions({
         const safeReason = escapeHtml(reason).replace(/\n/g, "<br>");
         const contentHtml = `<p>Hola,</p><p>Tu ficha médica no fue aprobada. Motivo:</p><p><strong>${safeReason}</strong></p><p>Por favor subí una nueva ficha médica corregida desde tu perfil en el panel.</p>`;
         const html = buildEmailHtml(contentHtml, {
-          title: "Escuelas River",
+          title: "Regatas+",
           baseUrl: typeof window !== "undefined" ? window.location.origin : "",
           greeting: "Mensaje de tu escuela:",
         });

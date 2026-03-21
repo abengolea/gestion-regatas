@@ -17,14 +17,14 @@ interface FeeStatus {
   message: string;
 }
 
-export function SchoolFeeBanner() {
+export function ClubFeeBanner() {
   const { user, profile, isSuperAdmin } = useUserProfile();
   const [status, setStatus] = useState<FeeStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [paying, setPaying] = useState(false);
 
   const activeSchoolId = profile?.activeSchoolId;
-  const canSeeBanner = !isSuperAdmin && profile?.role === "school_admin" && activeSchoolId;
+  const canSeeBanner = !isSuperAdmin && profile?.role === "admin_subcomision" && activeSchoolId;
 
   const fetchStatus = useCallback(async () => {
     if (!user || !activeSchoolId) return;
@@ -32,7 +32,7 @@ export function SchoolFeeBanner() {
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/platform-fee/my-status?schoolId=${activeSchoolId}`, {
+      const res = await fetch(`/api/platform-fee/my-status?subcomisionId=${activeSchoolId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {

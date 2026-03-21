@@ -14,7 +14,7 @@ function getSecret(): string {
   return secret;
 }
 
-/** Genera un state firmado con schoolId para el flujo OAuth. */
+/** Genera un state firmado con subcomisionId para el flujo OAuth. */
 export function signOAuthState(schoolId: string): string {
   const secret = getSecret();
   const timestamp = String(Date.now());

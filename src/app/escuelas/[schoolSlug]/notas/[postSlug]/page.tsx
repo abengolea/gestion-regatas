@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!post) return { title: "Nota no encontrada" };
 
   return {
-    title: `${post.title} | Escuelas River`,
+    title: `${post.title} | Regatas+`,
     description: post.excerpt || post.title,
     openGraph: {
       title: post.title,

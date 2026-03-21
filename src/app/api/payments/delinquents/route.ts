@@ -1,5 +1,5 @@
 /**
- * GET /api/payments/delinquents?schoolId=...
+ * GET /api/payments/delinquents?subcomisionId=...
  * Lista morosos de la escuela (admin).
  */
 

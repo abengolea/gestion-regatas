@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface EvaluationDetailDisplayProps {
   evaluation: Evaluation;
-  schoolId: string;
+  subcomisionId: string;
   onDeleted: () => void;
   onEditClick: (evaluation: Evaluation) => void;
 }
@@ -57,7 +57,7 @@ const skillLabels: Record<string, string> = {
     learningAttitude: "Actitud de aprendizaje",
 };
 
-export function EvaluationDetailDisplay({ evaluation, schoolId, onDeleted, onEditClick }: EvaluationDetailDisplayProps) {
+export function EvaluationDetailDisplay({ evaluation, subcomisionId, onDeleted, onEditClick }: EvaluationDetailDisplayProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [deleting, setDeleting] = useState(false);
@@ -65,12 +65,12 @@ export function EvaluationDetailDisplay({ evaluation, schoolId, onDeleted, onEdi
     const handleDelete = async () => {
         setDeleting(true);
         try {
-            await deleteDoc(doc(firestore, `schools/${schoolId}/evaluations/${evaluation.id}`));
+            await deleteDoc(doc(firestore, `subcomisiones/${subcomisionId}/evaluations/${evaluation.id}`));
             toast({ title: "Evaluación eliminada", description: "La evaluación ha sido borrada correctamente." });
             onDeleted();
         } catch (err) {
             errorEmitter.emit("permission-error", new FirestorePermissionError({
-                path: `schools/${schoolId}/evaluations/${evaluation.id}`,
+                path: `subcomisiones/${subcomisionId}/evaluations/${evaluation.id}`,
                 operation: "delete",
             }));
             toast({

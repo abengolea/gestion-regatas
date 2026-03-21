@@ -1,5 +1,5 @@
 /**
- * POST /api/players/status
+ * POST /api/socios/status
  * Actualiza solo el status del jugador (active | inactive | suspended).
  * Solo administrador o entrenador de la escuela.
  */
@@ -18,11 +18,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { schoolId, playerId, status } = body as {
-      schoolId?: string;
-      playerId?: string;
-      status?: string;
-    };
+    const b = body as { schoolId?: string; subcomisionId?: string; playerId?: string; socioId?: string; status?: string };
+    const schoolId = b.subcomisionId ?? b.schoolId;
+    const playerId = b.socioId ?? b.playerId;
+    const { status } = b;
     if (!schoolId || !playerId || !status) {
       return NextResponse.json(
         { error: "Faltan schoolId, playerId o status" },
@@ -40,17 +39,21 @@ export async function POST(request: Request) {
     const uid = auth.uid;
 
     const schoolUserSnap = await db
-      .doc(`schools/${schoolId}/users/${uid}`)
+      .collection('subcomisiones')
+      .doc(schoolId)
+      .collection('users')
+      .doc(uid)
       .get();
     const userInSchool =
       schoolUserSnap.exists &&
-      ["school_admin", "coach"].includes(
+      ["admin_subcomision", "encargado_deportivo"].includes(
         (schoolUserSnap.data() as { role?: string })?.role ?? ""
       );
     const platformUserSnap = await db.doc(`platformUsers/${uid}`).get();
+    const platformData = platformUserSnap.data() as { gerente_club?: boolean; super_admin?: boolean } | undefined;
     const isSuperAdmin =
       platformUserSnap.exists &&
-      (platformUserSnap.data() as { super_admin?: boolean })?.super_admin === true;
+      (platformData?.gerente_club ?? platformData?.super_admin) === true;
 
     if (!userInSchool && !isSuperAdmin) {
       return NextResponse.json(
@@ -59,7 +62,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const playerRef = db.doc(`schools/${schoolId}/players/${playerId}`);
+    const playerRef = db.collection('subcomisiones').doc(schoolId).collection('socios').doc(playerId);
     const playerSnap = await playerRef.get();
     if (!playerSnap.exists) {
       return NextResponse.json(

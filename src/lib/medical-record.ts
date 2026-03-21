@@ -6,7 +6,7 @@ const ALLOWED_TYPE = "application/pdf";
 
 /**
  * Sube la ficha médica (PDF) del jugador a Storage y devuelve { url, storagePath }.
- * Ruta: schools/{schoolId}/players/{playerId}/medical-record.pdf
+ * Ruta: subcomisiones/{subcomisionId}/socios/{socioId}/medical-record.pdf
  * Reemplaza el archivo anterior si existe.
  */
 export async function uploadMedicalRecord(

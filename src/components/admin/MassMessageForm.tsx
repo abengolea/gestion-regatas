@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useUserProfile, useCollection, useFirestore } from "@/firebase";
-import type { Player } from "@/lib/types";
+import type { Socio } from "@/lib/types";
 import { getBirthYearLabel } from "@/lib/utils";
 import { buildEmailHtml, htmlToPlainText, sendMailDoc } from "@/lib/email";
 import { improveMassMessageWithAI } from "@/ai/flows/improve-mass-message";
@@ -28,9 +28,9 @@ import { Mail, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Cat. año nac. (09, 15, ...) derivadas de los jugadores. */
-function getCategoriesFromPlayers(players: Player[]): string[] {
+function getCategoriesFromPlayers(socios: Socio[]): string[] {
   const set = new Set<string>();
-  for (const p of players) {
+  for (const p of socios) {
     if (p.birthDate) {
       set.add(getBirthYearLabel(p.birthDate instanceof Date ? p.birthDate : new Date(p.birthDate)));
     }
@@ -43,16 +43,16 @@ function getCategoriesFromPlayers(players: Player[]): string[] {
 }
 
 /** Jugadores con email válido. */
-function playersWithEmail(players: Player[]): Player[] {
+function playersWithEmail(players: Socio[]): Socio[] {
   return players.filter((p) => p.email?.trim());
 }
 
 /** Filtra jugadores por cat. año nac. seleccionadas (o todos si allSelected). */
 function filterByCategories(
-  players: Player[],
+  players: Socio[],
   allSelected: boolean,
   selectedCategories: Set<string>
-): Player[] {
+): Socio[] {
   if (allSelected) return players;
   return players.filter((p) => {
     if (!p.birthDate) return false;
@@ -66,8 +66,8 @@ export function MassMessageForm() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const { data: playersData, loading: playersLoading } = useCollection<Player>(
-    activeSchoolId ? `schools/${activeSchoolId}/players` : "",
+  const { data: playersData, loading: playersLoading } = useCollection<Socio>(
+    activeSchoolId ? `subcomisiones/${activeSchoolId}/socios` : "",
     {}
   );
   const players = (Array.isArray(playersData) ? playersData : []).filter((p) => !p.archived);
@@ -156,7 +156,7 @@ export function MassMessageForm() {
     try {
       const contentHtml = content.replace(/\n/g, "<br>");
       const html = buildEmailHtml(contentHtml, {
-        title: "Escuelas River",
+        title: "Regatas+",
         baseUrl: typeof window !== "undefined" ? window.location.origin : "",
         greeting: "Mensaje de tu escuela:",
       });
@@ -185,7 +185,7 @@ export function MassMessageForm() {
     }
   };
 
-  if (profile?.role !== "school_admin") {
+  if (profile?.role !== "admin_subcomision") {
     return (
       <Card>
         <CardHeader>

@@ -35,6 +35,18 @@ export function calculateAge(birthDate: Date): number {
   return age;
 }
 
+/** Obtiene Date de nacimiento desde birthDate o fechaNacimiento (string). Para mostrar edad y categoría. */
+export function getBirthDateFromPlayer(p: { birthDate?: unknown; fechaNacimiento?: string }): Date | null {
+  if (p.birthDate) {
+    const d = toDateSafe(p.birthDate);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const fn = p.fechaNacimiento?.trim();
+  if (!fn) return null;
+  const parsed = new Date(fn);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
 /** Edad que cumple (o cumplió) en el año en curso. Usada para categorías SUB-X. */
 export function getCategoryAge(birthDate: Date): number {
   const bd = birthDate instanceof Date ? birthDate : new Date(birthDate);

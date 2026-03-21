@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
 import { EditCoachFeedbackDialog } from "@/components/players/EditCoachFeedbackDialog";
-import type { Player } from "@/lib/types";
+import type { Socio } from "@/lib/types";
 
 const POSICION_LABELS: Record<string, string> = {
   arquero: "Arquero",
@@ -25,14 +25,14 @@ const MANO_LABELS: Record<string, string> = {
 };
 
 interface SummaryTabProps {
-  player: Player;
+  player: Socio;
   lastCoachComment?: string;
   canEditCoachFeedback?: boolean;
-  schoolId?: string;
-  playerId?: string;
+  subcomisionId?: string;
+  socioId?: string;
 }
 
-export function SummaryTab({ player, lastCoachComment, canEditCoachFeedback, schoolId, playerId }: SummaryTabProps) {
+export function SummaryTab({ player, lastCoachComment, canEditCoachFeedback, subcomisionId, socioId }: SummaryTabProps) {
     const [editFeedbackOpen, setEditFeedbackOpen] = useState(false);
     const mano = player.mano_dominante ?? (player as unknown as { pie_dominante?: string }).pie_dominante;
     const hasDeportivo = player.posicion_preferida || mano || player.altura_cm || player.peso_kg;
@@ -80,7 +80,7 @@ export function SummaryTab({ player, lastCoachComment, canEditCoachFeedback, sch
                             </TableRow>
                              <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">Contacto Tutor</TableCell>
-                                <TableCell className="text-right">{player.tutorContact.name} ({player.tutorContact.phone})</TableCell>
+                                <TableCell className="text-right">{player.tutorContact?.name ?? "—"} ({player.tutorContact?.phone ?? "—"})</TableCell>
                             </TableRow>
                         </TableBody>
                     </Table>
@@ -126,7 +126,7 @@ export function SummaryTab({ player, lastCoachComment, canEditCoachFeedback, sch
              <Card className="lg:col-span-2">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="font-headline">Devolución del Entrenador</CardTitle>
-                    {canEditCoachFeedback && schoolId && playerId && (
+                    {canEditCoachFeedback && subcomisionId && socioId && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -144,13 +144,13 @@ export function SummaryTab({ player, lastCoachComment, canEditCoachFeedback, sch
                     </p>
                 </CardContent>
             </Card>
-            {canEditCoachFeedback && schoolId && playerId && (
+            {canEditCoachFeedback && subcomisionId && socioId && (
               <EditCoachFeedbackDialog
                 isOpen={editFeedbackOpen}
                 onOpenChange={setEditFeedbackOpen}
-                schoolId={schoolId}
-                playerId={playerId}
-                playerName={`${player.firstName ?? ""} ${player.lastName ?? ""}`.trim()}
+                subcomisionId={subcomisionId!}
+                socioId={socioId!}
+                playerName={`${player.nombre ?? player.firstName ?? ""} ${player.apellido ?? player.lastName ?? ""}`.trim()}
                 initialValue={player.coachFeedback ?? lastCoachComment ?? player.observations ?? ""}
               />
             )}

@@ -46,7 +46,7 @@ import { es } from "date-fns/locale";
 
 type ActionState = {
   type: "approving" | "rejecting";
-  playerId: string;
+  socioId: string;
 } | null;
 
 export function PendingRegistrations() {
@@ -56,11 +56,11 @@ export function PendingRegistrations() {
   const firestore = useFirestore();
 
   const {
-    data: pendingPlayers,
+    data: pendingSocios,
     loading,
     error,
   } = useCollection<PendingPlayer>(
-    isReady && activeSchoolId ? `schools/${activeSchoolId}/pendingPlayers` : "",
+    isReady && activeSchoolId ? `subcomisiones/${activeSchoolId}/pendingPlayers` : "",
     { orderBy: ["submittedAt", "asc"] }
   );
 
@@ -80,18 +80,18 @@ export function PendingRegistrations() {
       });
       return;
     }
-    setActionState({ type: "approving", playerId: pendingPlayer.id });
+    setActionState({ type: "approving", socioId: pendingPlayer.id });
 
     const batch = writeBatch(firestore);
 
     const emailNorm = (pendingPlayer as { email?: string }).email?.trim().toLowerCase();
     if (emailNorm) {
-      const pendingByEmailRef = doc(firestore, "pendingPlayerByEmail", emailNorm);
+      const pendingByEmailRef = doc(firestore, "pendingSocioByEmail", emailNorm);
       batch.delete(pendingByEmailRef);
     }
 
     // 1. Define el nuevo documento del jugador
-    const newPlayerRef = doc(collection(firestore, `schools/${activeSchoolId}/players`));
+    const newSocioRef = doc(collection(firestore, `subcomisiones/${activeSchoolId}/socios`));
     const newPlayerData = {
       firstName: pendingPlayer.firstName,
       lastName: pendingPlayer.lastName,
@@ -110,26 +110,26 @@ export function PendingRegistrations() {
       createdAt: Timestamp.now(),
       createdBy: profile.uid,
     };
-    batch.set(newPlayerRef, newPlayerData);
+    batch.set(newSocioRef, newPlayerData);
 
     if (emailNorm) {
-      batch.set(doc(firestore, "playerLogins", emailNorm), {
-        schoolId: activeSchoolId,
-        playerId: newPlayerRef.id,
+      batch.set(doc(firestore, "socioLogins", emailNorm), {
+        subcomisionId: activeSchoolId,
+        socioId: newSocioRef.id,
       });
     }
 
     // 2. Define la eliminación del jugador pendiente
     const pendingPlayerRef = doc(
       firestore,
-      `schools/${activeSchoolId}/pendingPlayers`,
+      `subcomisiones/${activeSchoolId}/pendingPlayers`,
       pendingPlayer.id
     );
     batch.delete(pendingPlayerRef);
 
     try {
       await batch.commit();
-      const newPlayerId = newPlayerRef.id;
+      const newSocioId = newSocioRef.id;
       // Después de aprobar: encolar email "Fuiste aceptado" vía API → colección mail → Trigger Email
       let emailSent = false;
       if (emailNorm) {
@@ -143,8 +143,8 @@ export function PendingRegistrations() {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                schoolId: activeSchoolId,
-                playerId: newPlayerId,
+                subcomisionId: activeSchoolId,
+                socioId: newSocioId,
                 playerEmail: emailNorm,
               }),
             });
@@ -190,18 +190,18 @@ export function PendingRegistrations() {
 
   const handleReject = async (pendingPlayer: PendingPlayer) => {
     if (!activeSchoolId) return;
-    setActionState({ type: "rejecting", playerId: pendingPlayer.id });
+    setActionState({ type: "rejecting", socioId: pendingPlayer.id });
 
     const pendingPlayerRef = doc(
       firestore,
-      `schools/${activeSchoolId}/pendingPlayers`,
+      `subcomisiones/${activeSchoolId}/pendingPlayers`,
       pendingPlayer.id
     );
 
     try {
       const emailNorm = (pendingPlayer as { email?: string }).email?.trim().toLowerCase();
       if (emailNorm) {
-        const pendingByEmailRef = doc(firestore, "pendingPlayerByEmail", emailNorm);
+        const pendingByEmailRef = doc(firestore, "pendingSocioByEmail", emailNorm);
         await deleteDoc(pendingByEmailRef);
       }
       await deleteDoc(pendingPlayerRef);
@@ -229,18 +229,18 @@ export function PendingRegistrations() {
   };
 
   const handleApproveAll = async () => {
-    if (!profile || !activeSchoolId || !pendingPlayers?.length) return;
+    if (!profile || !activeSchoolId || !pendingSocios?.length) return;
     setApproveAllState(true);
     let approved = 0;
-    for (const player of pendingPlayers) {
+    for (const player of pendingSocios) {
       try {
         const batch = writeBatch(firestore);
         const emailNorm = (player as { email?: string }).email?.trim().toLowerCase();
         if (emailNorm) {
-          batch.delete(doc(firestore, "pendingPlayerByEmail", emailNorm));
+          batch.delete(doc(firestore, "pendingSocioByEmail", emailNorm));
         }
-        const newPlayerRef = doc(collection(firestore, `schools/${activeSchoolId}/players`));
-        batch.set(newPlayerRef, {
+        const newSocioRef = doc(collection(firestore, `subcomisiones/${activeSchoolId}/socios`));
+        batch.set(newSocioRef, {
           firstName: player.firstName,
           lastName: player.lastName,
           birthDate: player.birthDate,
@@ -255,12 +255,12 @@ export function PendingRegistrations() {
           createdBy: profile.uid,
         });
         if (emailNorm) {
-          batch.set(doc(firestore, "playerLogins", emailNorm), {
-            schoolId: activeSchoolId,
-            playerId: newPlayerRef.id,
+          batch.set(doc(firestore, "socioLogins", emailNorm), {
+            subcomisionId: activeSchoolId,
+            socioId: newSocioRef.id,
           });
         }
-        batch.delete(doc(firestore, `schools/${activeSchoolId}/pendingPlayers`, player.id));
+        batch.delete(doc(firestore, `subcomisiones/${activeSchoolId}/pendingPlayers`, player.id));
         await batch.commit();
         if (emailNorm) {
           try {
@@ -273,8 +273,8 @@ export function PendingRegistrations() {
                   "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                  schoolId: activeSchoolId,
-                  playerId: newPlayerRef.id,
+                  subcomisionId: activeSchoolId,
+                  socioId: newSocioRef.id,
                   playerEmail: emailNorm,
                 }),
               });
@@ -289,14 +289,14 @@ export function PendingRegistrations() {
         errorEmitter.emit(
           "permission-error",
           new FirestorePermissionError({
-            path: `schools/${activeSchoolId}/players`,
+            path: `subcomisiones/${activeSchoolId}/socios`,
             operation: "create",
           })
         );
         toast({
           variant: "destructive",
           title: "Error",
-          description: `Se aprobaron ${approved} de ${pendingPlayers.length}. No se pudo aprobar a ${player.firstName}.`,
+          description: `Se aprobaron ${approved} de ${pendingSocios.length}. No se pudo aprobar a ${player.firstName}.`,
         });
         break;
       }
@@ -304,9 +304,9 @@ export function PendingRegistrations() {
     if (approved > 0) {
       toast({
         title: "¡Listo!",
-        description: approved === pendingPlayers.length
+        description: approved === pendingSocios.length
           ? `Se aprobaron las ${approved} solicitudes.`
-          : `Se aprobaron ${approved} de ${pendingPlayers.length} solicitudes.`,
+          : `Se aprobaron ${approved} de ${pendingSocios.length} solicitudes.`,
       });
     }
     setApproveAllState(false);
@@ -347,7 +347,7 @@ export function PendingRegistrations() {
     );
   }
 
-  if (!pendingPlayers || pendingPlayers.length === 0) {
+  if (!pendingSocios || pendingSocios.length === 0) {
     return (
       <Card className="flex flex-col items-center justify-center p-12 text-center">
         <CardHeader>
@@ -380,7 +380,7 @@ export function PendingRegistrations() {
         </Button>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {pendingPlayers.map((player) => (
+        {pendingSocios.map((player) => (
           <Card key={player.id} className="flex flex-col">
             <CardHeader>
               <CardTitle>
@@ -406,7 +406,7 @@ export function PendingRegistrations() {
                 onClick={() => setPlayerToConfirm({ player, action: "approve" })}
                 disabled={!!actionState || approveAllState}
               >
-                {actionState?.type === 'approving' && actionState?.playerId === player.id ? (
+                {actionState?.type === 'approving' && actionState?.socioId === player.id ? (
                   <Loader2 className="animate-spin" />
                 ) : (
                   <Check />
@@ -419,7 +419,7 @@ export function PendingRegistrations() {
                 onClick={() => setPlayerToConfirm({ player, action: "reject" })}
                 disabled={!!actionState || approveAllState}
               >
-                {actionState?.type === 'rejecting' && actionState?.playerId === player.id ? (
+                {actionState?.type === 'rejecting' && actionState?.socioId === player.id ? (
                   <Loader2 className="animate-spin" />
                 ) : (
                   <X />

@@ -35,7 +35,7 @@ Documento para replicar en otra aplicación las funcionalidades implementadas en
 
 ### Campos de Payment
 ```
-id, playerId, schoolId, period, amount, currency, provider,
+id, socioId, subcomisionId, period, amount, currency, provider,
 status (pending|approved|rejected|refunded), paidAt, createdAt,
 metadata, paymentType (monthly|registration|clothing)
 ```
@@ -87,7 +87,7 @@ Jugador, Email, Período, Días mora, Monto, Moneda, Estado, Teléfono tutor, No
 ### Listado de pagos
 - Límite por defecto en Firestore (ej. 150 docs) para evitar cargar miles de registros
 - Solo consultar jugadores archivados cuando se necesite
-- Evitar `db.collection('schools').get()` en el fallback de resolución de nombres
+- Evitar `db.collection('subcomisiones').get()` en el fallback de resolución de nombres
 
 ### Cálculo de morosos
 - **Antes**: N×M consultas (jugadores × períodos)
@@ -98,7 +98,7 @@ Jugador, Email, Período, Días mora, Monto, Moneda, Estado, Teléfono tutor, No
 - `payments`: (schoolId, createdAt desc)
 - `payments`: (schoolId, period, createdAt desc)
 - `payments`: (schoolId, status)
-- `players`: (archived == true) en subcolección por escuela
+- `socios`: (archived == true) en subcolección por escuela
 
 ---
 

@@ -47,17 +47,20 @@ export default function PendingApprovalPage() {
       return;
     }
     const emailNorm = user.email.trim().toLowerCase();
-    getDoc(doc(firestore, "pendingPlayerByEmail", emailNorm))
+    getDoc(doc(firestore, "pendingSocioByEmail", emailNorm))
       .then((snap) => setHasWebRegistrationPending(snap.exists()))
       .catch(() => setHasWebRegistrationPending(false));
-    getDoc(doc(firestore, "playerLogins", emailNorm))
+    getDoc(doc(firestore, "socioLogins", emailNorm))
       .then((loginSnap) => {
         if (!loginSnap.exists()) {
           setIsAccountDisabled(false);
           return;
         }
-        const { schoolId: sid, playerId } = loginSnap.data() as { schoolId: string; playerId: string };
-        return getDoc(doc(firestore, `schools/${sid}/players/${playerId}`));
+        const data = loginSnap.data() as { schoolId?: string; playerId?: string; subcomisionId?: string; socioId?: string };
+        const sid = data.subcomisionId ?? data.schoolId;
+        const pid = data.socioId ?? data.playerId;
+        if (!sid || !pid) return;
+        return getDoc(doc(firestore, `subcomisiones/${sid}/socios/${pid}`));
       })
       .then((playerSnap) => {
         if (!playerSnap || !playerSnap.exists()) {

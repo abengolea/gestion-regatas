@@ -1,7 +1,9 @@
 export interface PlatformUser {
   id: string; // auth uid
   email: string;
-  super_admin: boolean;
+  gerente_club: boolean;
+  /** @deprecated Use gerente_club. Compatibilidad Firestore. */
+  super_admin?: boolean;
   createdAt: Date;
 }
 
@@ -33,12 +35,12 @@ export interface AuditLogEntry {
   action: string;
   resourceType: string;
   resourceId?: string;
-  schoolId?: string;
+  subcomisionId?: string;
   details?: string;
   createdAt: Date;
 }
 
-export interface School {
+export interface Subcomision {
   id: string;
   name: string;
   /** Slug URL para rutas públicas (ej. /escuelas/escuela-villa-crespo). */
@@ -59,65 +61,85 @@ export interface Category {
 }
 
 // Representa la membresía y el rol de un usuario en una escuela específica.
-export interface SchoolUser {
+export interface SubcomisionUser {
   id: string; // auth uid
   displayName: string;
   email: string;
-  role: 'school_admin' | 'coach' | 'editor' | 'viewer' | 'player';
+  role: 'admin_subcomision' | 'encargado_deportivo' | 'editor' | 'viewer' | 'player';
   assignedCategories?: string[]; // IDs de las categorías asignadas
 }
 
-export interface Player {
+export type TipoSocio = 'general' | 'deportivo' | 'familiar';
+
+export interface Socio {
   id: string;
-  firstName: string;
-  lastName: string;
-  birthDate: Date;
-  dni?: string;
-  healthInsurance?: string;
-  /** Email para que el jugador pueda iniciar sesión en el panel (opcional). */
-  email?: string;
-  tutorContact: {
-    name: string;
-    phone: string;
-  };
-  status: 'active' | 'inactive' | 'suspended';
+  nombre: string;
+  apellido: string;
+  email: string;
+  dni: string;
+  telefono?: string;
+  fechaNacimiento?: string;
+  foto?: string;
+
+  /** Tipo base */
+  tipoSocio: TipoSocio;
+
+  /** Flags independientes del tipo */
+  esFederado: boolean;
+  esVitalicio: boolean;
+  estaActivo: boolean;
+
+  /** Subcomisiones a las que pertenece */
+  subcomisiones: string[];
+
+  /** Si es familiar, referencia al socio titular */
+  socioTitularId?: string;
+
+  /** QR y membresía */
+  numeroSocio: string;
+  qrToken?: string;
+  fechaAlta: string;
+  fechaVencimiento?: string;
+
+  /** Campos heredados / compatibilidad */
+  categoriaId?: string;
+  /** Tira dentro de la categoría (ej. A, B, C) */
+  tira?: string;
+  subcomisionId?: string;
+  fichasMedicas?: unknown[];
+  escuelaId?: string;
+
+  /** Legacy (mapear desde nombre/apellido para compatibilidad) */
+  firstName?: string;
+  lastName?: string;
+  birthDate?: Date;
+  status?: 'active' | 'inactive' | 'suspended';
+  tutorContact?: { name: string; phone: string };
   photoUrl?: string;
   observations?: string;
-  /** Devolución/comentario del entrenador (editable por admin/entrenador con un botón). */
   coachFeedback?: string;
-  /** Altura en cm (datos físicos de referencia). */
+  healthInsurance?: string;
   altura_cm?: number;
-  /** Peso en kg (datos físicos de referencia). */
   peso_kg?: number;
-  /** Envergadura en cm (distancia entre las puntas de los dedos con brazos extendidos). */
   envergadura_cm?: number;
-  /** Mano predominante (lateralidad, opcional). */
   mano_dominante?: 'derecho' | 'izquierdo' | 'ambidiestro';
-  /** Posición preferida en cancha. */
   posicion_preferida?: 'arquero' | 'defensor' | 'lateral' | 'mediocampista' | 'delantero' | 'extremo';
-  /** Categoría de entrenamiento: masculino o femenino. */
   genero?: 'masculino' | 'femenino';
-  /** Número de camiseta (opcional). */
   numero_camiseta?: number;
-  /** Talle de camiseta (opcional). */
   talle_camiseta?: string;
-  createdAt: Date;
-  createdBy: string; // uid
-  /** Si true, el jugador está archivado: no aparece en listados ni cuenta en totales/cantidades. Útil para jugadores de prueba. */
+  createdAt?: Date;
+  createdBy?: string;
   archived?: boolean;
   archivedAt?: Date;
   archivedBy?: string;
-  /** Ficha médica (PDF): subida por el jugador o por staff; aprobada cuando admin/entrenador marca cumplido. */
   medicalRecord?: MedicalRecord;
-  // No está en el modelo de Firestore, se añade en el frontend.
-  escuelaId?: string;
 }
 
 /** Ficha médica del jugador (PDF). Subida por jugador o staff; aprobada o rechazada por admin/entrenador. */
 export interface MedicalRecord {
   /** URL pública del PDF en Storage. */
   url: string;
-  /** Ruta en Storage, ej: schools/{schoolId}/players/{playerId}/medical-record.pdf */
+  /** Ruta en Storage, ej: subcomisiones/{schoolId}/socios/{socioId}/medical-record.pdf */
   storagePath: string;
   uploadedAt: Date;
   /** UID de quien subió (jugador o staff). */
@@ -153,7 +175,7 @@ export interface PendingPlayer {
 export interface EmailVerificationAttempt {
   id: string;
   email: string;
-  playerData: {
+  socioData: {
     firstName: string;
     lastName: string;
     birthDate: Date;
@@ -285,18 +307,22 @@ export interface Evaluation {
 
 
 // Perfil de usuario unificado para usar en el frontend
-export interface UserProfile extends SchoolUser {
+export interface UserProfile extends SubcomisionUser {
     uid: string;
     isSuperAdmin: boolean;
+    activeSubcomisionId?: string;
+    /** @deprecated Use activeSubcomisionId */
     activeSchoolId?: string;
-    memberships: SchoolMembership[];
-    /** ID del jugador en la escuela cuando el rol es 'player'. */
+    memberships: SubcomisionMembership[];
+    /** ID del socio cuando el rol es 'player'. */
+    socioId?: string;
+    /** @deprecated Use socioId */
     playerId?: string;
 }
 
-export interface SchoolMembership {
-    schoolId: string;
-    role: 'school_admin' | 'coach' | 'editor' | 'viewer' | 'player';
+export interface SubcomisionMembership {
+    subcomisionId: string;
+    role: 'admin_subcomision' | 'encargado_deportivo' | 'editor' | 'viewer' | 'player';
 }
 
 /** Evaluación física del jugador. Campos varían según edad. */
@@ -364,12 +390,12 @@ export interface PhysicalFieldOverride {
   placeholder?: string;
 }
 
-/** Configuración de qué tests medir por escuela (coach puede activar/desactivar, agregar y editar). */
+/** Configuración de qué tests medir por escuela (encargado_deportivo puede activar/desactivar, agregar y editar). */
 export interface PhysicalAssessmentConfig {
   id: string;
   /** Por grupo etario: array de keys de campos habilitados. Si vacío/ausente, se usan todos por defecto. */
   enabledFieldsByAgeGroup: Partial<Record<PhysicalAgeGroup, string[]>>;
-  /** Tests personalizados agregados por el coach por grupo etario. */
+  /** Tests personalizados agregados por el encargado_deportivo por grupo etario. */
   customFieldsByAgeGroup?: Partial<Record<PhysicalAgeGroup, PhysicalFieldDef[]>>;
   /** Ediciones (label, unit, min, max) aplicadas a tests predefinidos por grupo. */
   fieldOverridesByAgeGroup?: Partial<Record<PhysicalAgeGroup, Record<string, PhysicalFieldOverride>>>;
@@ -393,11 +419,11 @@ export interface PhysicalAssessment {
   createdBy: string;
 }
 
-/** Video subido o grabado por el entrenador, asociado a un jugador (videoteca). */
-export interface PlayerVideo {
+/** Video subido o grabado por el encargado deportivo, asociado a un socio (videoteca). */
+export interface SocioVideo {
   id: string;
-  playerId: string;
-  /** Ruta en Firebase Storage, ej: schools/{schoolId}/players/{playerId}/videos/{id}.webm */
+  socioId: string;
+  /** Ruta en Firebase Storage, ej: subcomisiones/{subcomisionId}/socios/{socioId}/videos/{id}.webm */
   storagePath: string;
   /** URL pública de descarga/reproducción */
   url: string;
@@ -411,6 +437,9 @@ export interface PlayerVideo {
   createdBy: string;
 }
 
+// Re-export comercio types
+export * from './comercio';
+
 // Re-export posts types
 export * from './posts';
 
@@ -420,3 +449,5 @@ export * from './support';
 export * from './payments';
 // Re-export platform fee types
 export * from './platform-fee';
+// Re-export viaje types
+export * from './viaje';

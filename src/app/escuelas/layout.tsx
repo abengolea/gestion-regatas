@@ -32,7 +32,7 @@ export default function EscuelasLayout({
       <main className="flex-1">{children}</main>
       <footer className="border-t py-6 px-4 lg:px-6">
         <p className="text-xs text-muted-foreground text-center">
-          &copy; {new Date().getFullYear()} Escuelas River. Todos los derechos reservados.
+          &copy; {new Date().getFullYear()} Regatas+. Todos los derechos reservados.
         </p>
       </footer>
     </div>

@@ -4,19 +4,19 @@
 
 | Área | Ruta / Detalle |
 |------|----------------|
-| **Auth y roles** | `src/firebase/auth/use-user-profile.tsx`: `UserProfile`, `isSuperAdmin`, `activeSchoolId`, `role` (school_admin \| coach \| player) |
-| **Tipos** | `src/lib/types/index.ts`: `PlatformUser`, `School`, `SchoolUser`, `Player`, `UserProfile`, `SchoolMembership` |
+| **Auth y roles** | `src/firebase/auth/use-user-profile.tsx`: `UserProfile`, `isSuperAdmin`, `activeSchoolId`, `role` (admin_subcomision \| encargado_deportivo \| player) |
+| **Tipos** | `src/lib/types/index.ts`: `PlatformUser`, `Subcomision`, `SubcomisionUser`, `Socio`, `UserProfile`, `SubcomisionMembership` |
 | **Firebase** | `src/firebase/config.ts`, `src/firebase/index.ts`: Auth, Firestore, Storage (client). No hay Firebase Admin en uso; Genkit con `'use server'` |
-| **Admin panels** | `src/components/admin/SuperAdminDashboard.tsx`, `SchoolAdminDashboard.tsx`; `src/app/dashboard/schools/[schoolId]/page.tsx` (gestión escuela) |
+| **Admin panels** | `src/components/admin/SuperAdminDashboard.tsx`, `SubcomisionAdminDashboard.tsx`; `src/app/dashboard/subcomisiones/[subcomisionId]/page.tsx` (gestión escuela) |
 | **UI** | `src/components/ui/*` (shadcn), `SidebarNav.tsx`, `Header.tsx` |
-| **AI** | `src/ai/genkit.ts` (Gemini), `src/ai/flows/*` — Server Actions con `improveCoachCommentsWithAI` etc. |
+| **AI** | `src/ai/genkit.ts` (Gemini), `src/ai/flows/*` — Server Actions con `improveEncargado DeportivoCommentsWithAI` etc. |
 | **API** | No existen Route Handlers en `app/api/`; lógica server en Server Actions (`'use server'`) |
 
 **Decisiones de arquitectura para soporte:**
 - **Flujo guiado:** motor config-driven en cliente; flujos en Firestore `supportFlows`.
 - **Tickets:** escritura directa a Firestore desde cliente (reglas por escuela y rol).
 - **IA:** nueva Server Action (Genkit) para resumir texto libre y extraer campos; sin llamadas pesadas en cada paso.
-- **Operadores:** solo `school_admin` (su escuela) y `super_admin` (todas); dashboard con filtros y actualización de estado en Firestore.
+- **Operadores:** solo `school_admin` (su escuela) y `gerente_club` (todas); dashboard con filtros y actualización de estado en Firestore.
 
 ---
 
@@ -48,7 +48,7 @@ Ruta: `schools/{schoolId}/supportConversations/{conversationId}`
 | `id` | string | sí (doc id) | Id de conversación |
 | `userId` | string | sí | uid del usuario |
 | `userEmail` | string | no | Email (mínimo PII) |
-| `userRole` | string | no | school_admin \| coach \| player |
+| `userRole` | string | no | school_admin \| encargado_deportivo \| player |
 | `flowId` | string | no | Flujo usado |
 | `state` | map | no | Estado actual del flujo (stepId, respuestas, etc.) |
 | `messages` | array | no | Mensajes chat (opcional; puede vivir solo en cliente hasta crear ticket) |
@@ -175,7 +175,7 @@ Categorías y puntos de entrada:
 7. **Rendimiento** — App lenta → device, ruta, último paso.
 8. **Bug** — Pasos de reproducción, dispositivo, URL, screenshot opcional (Storage signed URL).
 
-Cada flujo: opciones rápidas → preguntas mínimas → autoservicio → si no resuelve: severidad, rol, dispositivo, repro, playerId → payload de ticket.
+Cada flujo: opciones rápidas → preguntas mínimas → autoservicio → si no resuelve: severidad, rol, dispositivo, repro, socioId → payload de ticket.
 
 ---
 

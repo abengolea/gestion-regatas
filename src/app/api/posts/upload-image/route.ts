@@ -1,6 +1,6 @@
 /**
  * POST /api/posts/upload-image
- * Sube imagen a Storage para posts. Path: schools/{schoolId}/posts/{postId}/{filename}
+ * Sube imagen a Storage para posts. Path: subcomisiones/{subcomisionId}/posts/{postId}/{filename}
  * O schools/{schoolId}/posts/temp/{uuid}.{ext} si postId es "temp"
  */
 
@@ -45,19 +45,19 @@ export async function POST(request: Request) {
     }
 
     const db = getAdminFirestore();
-    const schoolUserSnap = await db.doc(`schools/${schoolId}/users/${auth.uid}`).get();
+    const schoolUserSnap = await db.collection("subcomisiones").doc(schoolId).collection("users").doc(auth.uid).get();
     const schoolUserData = schoolUserSnap.data() as { role?: string } | undefined;
     const platformSnap = await db.doc(`platformUsers/${auth.uid}`).get();
-    const platformData = platformSnap.data() as { super_admin?: boolean } | undefined;
-    const isSuperAdmin = platformData?.super_admin === true;
-    const isSchoolAdmin = schoolUserData?.role === "school_admin";
+    const platformData = platformSnap.data() as { gerente_club?: boolean; super_admin?: boolean } | undefined;
+    const isSuperAdmin = (platformData?.gerente_club ?? platformData?.super_admin) === true;
+    const isSubcomisionAdmin = schoolUserData?.role === "admin_subcomision";
     const isEditor = schoolUserData?.role === "editor";
-    const isCoach = schoolUserData?.role === "coach";
+    const isEncargadoDeportivo = schoolUserData?.role === "encargado_deportivo";
 
     if (!isSuperAdmin && !schoolUserSnap.exists) {
-      return NextResponse.json({ error: "No pertenecés a esta escuela" }, { status: 403 });
+      return NextResponse.json({ error: "No pertenecés a esta subcomisión" }, { status: 403 });
     }
-    if (!isSuperAdmin && !isSchoolAdmin && !isEditor && !isCoach) {
+    if (!isSuperAdmin && !isSubcomisionAdmin && !isEditor && !isEncargadoDeportivo) {
       return NextResponse.json(
         { error: "Solo admins, editores o entrenadores pueden subir imágenes" },
         { status: 403 }

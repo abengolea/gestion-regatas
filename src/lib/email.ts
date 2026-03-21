@@ -28,7 +28,7 @@ export function buildEmailHtml(
   contentHtml: string,
   options?: { title?: string; greeting?: string; baseUrl?: string; useDataUri?: boolean; logoUrl?: string }
 ): string {
-  const title = options?.title ?? "Escuelas River";
+  const title = options?.title ?? "Regatas+";
   const greeting = options?.greeting ?? "";
   const logoSrc = options?.logoUrl
     ? options.logoUrl

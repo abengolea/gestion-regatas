@@ -3,7 +3,7 @@ import { NotasFeed } from "@/components/notas/NotasFeed";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Notas | Escuelas River",
+  title: "Notas | Regatas+",
   description: "Noticias, actividades y comunicados de Escuelas River",
 };
 
@@ -26,7 +26,7 @@ export default async function NotasPage() {
       <NotasFeed
         initialPosts={posts}
         initialCursor={nextCursor}
-        schoolSlug={undefined}
+        subcomisionSlug={undefined}
       />
     </div>
   );

@@ -50,21 +50,22 @@ import {
 } from "@/lib/utils";
 import { getPlayersInSlot as getPlayersInSlotUtil } from "@/lib/training-slot-utils";
 import type { TrainingSlot, TrainingConfig } from "@/lib/types";
-import type { Player } from "@/lib/types";
-import type { SchoolUser } from "@/lib/types";
+import type { Socio } from "@/lib/types";
+import type { SubcomisionUser } from "@/lib/types";
 import { useCollection } from "@/firebase";
 
 const DAY_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 interface TrainingSchedulesPanelProps {
-  schoolId: string;
+  subcomisionId: string;
   getToken: () => Promise<string | null>;
 }
 
 export function TrainingSchedulesPanel({
-  schoolId,
+  subcomisionId,
   getToken,
 }: TrainingSchedulesPanelProps) {
+  const schoolId = subcomisionId;
   const { toast } = useToast();
   const [config, setConfig] = useState<TrainingConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -212,24 +213,24 @@ interface SlotListProps {
 }
 
 function SlotList({ schoolId, slots, onEdit, onDelete, onAdd }: SlotListProps) {
-  const { data: players } = useCollection<Player>(
-    schoolId ? `schools/${schoolId}/players` : "",
+  const { data: socios } = useCollection<Socio>(
+    schoolId ? `subcomisiones/${schoolId}/socios` : "",
     {}
   );
-  const { data: coaches } = useCollection<SchoolUser>(
-    schoolId ? `schools/${schoolId}/users` : "",
+  const { data: coaches } = useCollection<SubcomisionUser>(
+    schoolId ? `subcomisiones/${schoolId}/users` : "",
     {}
   );
 
-  const activePlayers = players?.filter((p) => !p.archived && p.status === "active") ?? [];
-  const coachList = coaches?.filter((u) => u.role === "coach" || u.role === "school_admin") ?? [];
+  const activePlayers = socios?.filter((p: Socio) => !p.archived && p.status === "active") ?? [];
+  const coachList = coaches?.filter((u) => u.role === "encargado_deportivo" || u.role === "admin_subcomision") ?? [];
 
-  const getCoachName = (coachId: string) =>
+  const getEncargadoDeportivoName = (coachId: string) =>
     coachList.find((c) => c.id === coachId)?.displayName ?? coachId;
 
   const getCoachNames = (slot: TrainingSlot) => {
     const ids = slot.coachIds?.length ? slot.coachIds : [slot.coachId];
-    return ids.map((id) => getCoachName(id)).filter(Boolean);
+    return ids.map((id) => getEncargadoDeportivoName(id)).filter(Boolean);
   };
 
   const getPlayersInSlot = (slot: TrainingSlot) =>
@@ -380,12 +381,12 @@ function SlotFormDialog({
   onSave,
   saving,
 }: SlotFormDialogProps) {
-  const { data: coaches } = useCollection<SchoolUser>(
+  const { data: coaches } = useCollection<SubcomisionUser>(
     schoolId ? `schools/${schoolId}/users` : "",
     {}
   );
   const coachList = useMemo(
-    () => coaches?.filter((u) => u.role === "coach" || u.role === "school_admin") ?? [],
+    () => coaches?.filter((u) => u.role === "encargado_deportivo" || u.role === "admin_subcomision") ?? [],
     [coaches]
   );
 
@@ -636,7 +637,7 @@ function SlotFormDialog({
                 onCheckedChange={() => toggleCoach(c.id)}
               />
               <span className="text-sm">
-                {c.displayName} ({c.role === "school_admin" ? "Admin" : "Entrenador"})
+                {c.displayName} ({c.role === "admin_subcomision" ? "Admin" : "Entrenador"})
               </span>
             </label>
           ))}

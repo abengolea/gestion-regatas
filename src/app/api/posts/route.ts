@@ -12,8 +12,8 @@ import type { CreatePostInput } from "@/lib/types/posts";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get("schoolId") ?? undefined;
-    const schoolSlug = searchParams.get("schoolSlug") ?? undefined;
+    const schoolId = searchParams.get("schoolId") ?? searchParams.get("subcomisionId") ?? undefined;
+    const schoolSlug = searchParams.get("schoolSlug") ?? searchParams.get("subcomisionSlug") ?? undefined;
     const status = (searchParams.get("status") ?? "published") as "draft" | "published" | "archived";
     const limit = Math.min(parseInt(searchParams.get("limit") ?? "12", 10) || 12, 50);
     const cursor = searchParams.get("cursor") ?? undefined;
@@ -27,9 +27,9 @@ export async function GET(request: Request) {
 
     let effectiveSchoolId = schoolId;
     if (status !== "published" && auth) {
-      const schools = await getSchoolsForUser(auth);
-      if (schools.length === 0) {
-        return NextResponse.json({ error: "Sin escuelas asignadas" }, { status: 403 });
+      const subcomisiones = await getSchoolsForUser(auth);
+      if (subcomisiones.length === 0) {
+        return NextResponse.json({ error: "Sin subcomisiones asignadas" }, { status: 403 });
       }
       if (schoolId) {
         const can = await canUserManagePosts(auth.uid, schoolId, "view");
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
           return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
         }
       } else {
-        effectiveSchoolId = schools[0].schoolId;
+        effectiveSchoolId = subcomisiones[0].schoolId;
       }
     }
 

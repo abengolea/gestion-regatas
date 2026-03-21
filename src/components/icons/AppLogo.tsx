@@ -46,7 +46,7 @@ export function AppLogo({ className }: { className?: string }) {
           "h-10 w-10",
           className
         )}
-        aria-label="Logo Escuelas River"
+        aria-label="Logo Regatas+"
       >
         ⚽
       </div>

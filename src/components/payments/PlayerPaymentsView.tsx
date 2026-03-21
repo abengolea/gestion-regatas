@@ -65,8 +65,10 @@ interface PlayerPaymentsViewProps {
 export function PlayerPaymentsView({ getToken }: PlayerPaymentsViewProps) {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [delinquent, setDelinquent] = useState<(DelinquentInfo & { dueDate: string }) | null>(null);
-  const [schoolId, setSchoolId] = useState<string | null>(null);
-  const [playerId, setPlayerId] = useState<string | null>(null);
+  const [subcomisionId, setSubcomisionId] = useState<string | null>(null);
+  const [socioId, setSocioId] = useState<string | null>(null);
+  const schoolId = subcomisionId;
+  const playerId = socioId;
   const [suggestedPeriod, setSuggestedPeriod] = useState<string>("");
   const [suggestedAmount, setSuggestedAmount] = useState<number>(0);
   const [suggestedCurrency, setSuggestedCurrency] = useState<string>("ARS");
@@ -133,8 +135,8 @@ export function PlayerPaymentsView({ getToken }: PlayerPaymentsViewProps) {
       setIndexBuilding(false);
       setPayments(body.payments ?? []);
       setDelinquent(body.delinquent ?? null);
-      setSchoolId(body.schoolId ?? null);
-      setPlayerId(body.playerId ?? null);
+      setSubcomisionId(body.subcomisionId ?? body.schoolId ?? null);
+      setSocioId(body.socioId ?? body.playerId ?? null);
       setSuggestedPeriod(body.suggestedPeriod ?? "");
       setSuggestedAmount(body.suggestedAmount ?? 0);
       setSuggestedCurrency(body.suggestedCurrency ?? "ARS");

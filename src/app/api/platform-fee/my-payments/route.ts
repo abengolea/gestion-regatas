@@ -1,11 +1,11 @@
 /**
- * GET /api/platform-fee/my-payments?schoolId=xxx
- * Lista pagos de mensualidad de la escuela a la plataforma (para admin/coach de la escuela).
+ * GET /api/platform-fee/my-payments?subcomisionId=xxx
+ * Lista pagos de mensualidad de la escuela a la plataforma (para admin/encargado_deportivo de la escuela).
  */
 
 import { NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
-import { listSchoolFeePayments } from '@/lib/payments/platform-fee';
+import { listClubFeePayments } from '@/lib/payments/platform-fee';
 import { verifyIdToken } from '@/lib/auth-server';
 
 export async function GET(request: Request) {
@@ -24,15 +24,16 @@ export async function GET(request: Request) {
     const db = getAdminFirestore();
 
     const platformSnap = await db.collection('platformUsers').doc(auth.uid).get();
-    const isSuperAdmin = (platformSnap.data() as { super_admin?: boolean })?.super_admin === true;
-    const userInSchool = await db.collection('schools').doc(schoolId).collection('users').doc(auth.uid).get();
+    const platformData = platformSnap.data() as { gerente_club?: boolean; super_admin?: boolean } | undefined;
+    const isSuperAdmin = (platformData?.gerente_club ?? platformData?.super_admin) === true;
+    const userInSchool = await db.collection('subcomisiones').doc(schoolId).collection('users').doc(auth.uid).get();
     const userData = userInSchool.data() as { role?: string } | undefined;
-    const isSchoolAdmin = userData?.role === 'school_admin';
-    if (!isSuperAdmin && (!userInSchool.exists || !isSchoolAdmin)) {
+    const isSubcomisionAdmin = userData?.role === 'admin_subcomision';
+    if (!isSuperAdmin && (!userInSchool.exists || !isSubcomisionAdmin)) {
       return NextResponse.json({ error: 'Solo el administrador de la escuela puede ver el historial de mensualidades' }, { status: 403 });
     }
 
-    const payments = await listSchoolFeePayments(db, { schoolId, limit: 100 });
+    const payments = await listClubFeePayments(db, { schoolId, limit: 100 });
 
     return NextResponse.json({
       payments: payments.map((p) => ({

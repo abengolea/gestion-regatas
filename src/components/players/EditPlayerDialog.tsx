@@ -40,7 +40,7 @@ import { PlayerPhotoField } from "./PlayerPhotoField";
 import { Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Player } from "@/lib/types";
+import type { Socio } from "@/lib/types";
 
 const playerSchema = z.object({
   // Datos personales
@@ -80,8 +80,10 @@ function normalizePosicion(p: string | undefined): (typeof POSICION_VALIDAS)[num
 }
 
 interface EditPlayerDialogProps {
-  player: Player;
-  schoolId: string;
+  player: Socio;
+  subcomisionId?: string;
+  /** @deprecated Use subcomisionId */
+  schoolId?: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
@@ -91,12 +93,14 @@ interface EditPlayerDialogProps {
 
 export function EditPlayerDialog({
   player,
+  subcomisionId: subcomisionIdProp,
   schoolId,
   isOpen,
   onOpenChange,
   onSuccess,
   isPlayerEditing = false,
 }: EditPlayerDialogProps) {
+  const subcomisionId = subcomisionIdProp ?? schoolId;
   const { user } = useUser();
   const { toast } = useToast();
   const [birthDateCalendarOpen, setBirthDateCalendarOpen] = useState(false);
@@ -251,15 +255,15 @@ export function EditPlayerDialog({
     try {
       const token = await user.getIdToken();
       const birthDate = updateData.birthDate as Timestamp;
-      const res = await fetch("/api/players/update", {
+      const res = await fetch("/api/socios/update", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          schoolId,
-          playerId: player.id,
+          subcomisionId,
+          socioId: player.id,
           oldEmail: player.email ?? null,
           updateData: {
             ...updateData,
@@ -523,7 +527,7 @@ export function EditPlayerDialog({
                           <PlayerPhotoField
                             value={field.value ?? ""}
                             onChange={field.onChange}
-                            schoolId={schoolId}
+                            subcomisionId={subcomisionId!}
                             playerId={player.id}
                             playerName={`${player.firstName ?? ""} ${player.lastName ?? ""}`.trim()}
                           />

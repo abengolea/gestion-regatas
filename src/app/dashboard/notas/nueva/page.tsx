@@ -11,7 +11,7 @@ export default function NuevaNotaPage() {
   const { profile, isReady, isSuperAdmin } = useUserProfile();
   const [mounted, setMounted] = useState(false);
 
-  const canCreate = profile?.role === "school_admin" || profile?.role === "coach" || profile?.role === "editor" || isSuperAdmin;
+  const canCreate = profile?.role === "admin_subcomision" || profile?.role === "encargado_deportivo" || profile?.role === "editor" || isSuperAdmin;
 
   useEffect(() => {
     setMounted(true);

@@ -12,8 +12,12 @@ import { ClipboardCheck, UserCheck, UserX } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
-  schoolId: string;
-  playerId: string;
+  subcomisionId?: string;
+  socioId?: string;
+  /** @deprecated Use subcomisionId */
+  schoolId?: string;
+  /** @deprecated Use socioId */
+  playerId?: string;
 };
 
 const statusConfig: Record<
@@ -37,7 +41,9 @@ const statusConfig: Record<
   },
 };
 
-export function AttendanceHistory({ schoolId, playerId }: Props) {
+export function AttendanceHistory({ subcomisionId: subcomisionIdProp, socioId: socioIdProp, schoolId, playerId }: Props) {
+  const subcomisionId = subcomisionIdProp ?? schoolId;
+  const socioId = socioIdProp ?? playerId;
   const firestore = useFirestore();
   const [items, setItems] = useState<
     Array<{ date: Date; status: Attendance["status"] }>
@@ -45,12 +51,12 @@ export function AttendanceHistory({ schoolId, playerId }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!schoolId) {
+    if (!subcomisionId || !socioId) {
       setLoading(false);
       return;
     }
     let cancelled = false;
-    getAttendanceHistoryForPlayer(firestore, schoolId, playerId)
+    getAttendanceHistoryForPlayer(firestore, subcomisionId, socioId)
       .then((data) => {
         if (!cancelled) setItems(data);
       })
@@ -63,7 +69,7 @@ export function AttendanceHistory({ schoolId, playerId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [firestore, schoolId, playerId]);
+  }, [firestore, subcomisionId, socioId]);
 
   if (loading) {
     return (

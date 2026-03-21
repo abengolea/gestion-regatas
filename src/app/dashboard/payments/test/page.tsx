@@ -17,14 +17,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCollection } from "@/firebase";
-import type { Player } from "@/lib/types";
+import type { Socio } from "@/lib/types";
 import { ArrowLeft, Search, Send, Copy, Check } from "lucide-react";
 
 type VerifyResult = {
-  schoolId: string;
+  subcomisionId: string;
   playerCount: number;
-  playerIds: string[];
-  players: Record<string, string>;
+  socioIds: string[];
+  socios: Record<string, string>;
 } | null;
 
 export default function PaymentsTestPage() {
@@ -45,8 +45,8 @@ export default function PaymentsTestPage() {
 
   const schoolId = profile?.activeSchoolId;
 
-  const { data: players } = useCollection<Player>(
-    schoolId ? `schools/${schoolId}/players` : "",
+  const { data: players } = useCollection<Socio>(
+    schoolId ? `subcomisiones/${schoolId}/socios` : "",
     { orderBy: ["lastName", "asc"] }
   );
   const activePlayers = (players ?? []).filter((p) => !p.archived);
@@ -82,7 +82,7 @@ export default function PaymentsTestPage() {
         return;
       }
       const res = await fetch(
-        `/api/payments/verify-school?schoolId=${encodeURIComponent(schoolId)}`,
+        `/api/payments/verify-subcomision?schoolId=${encodeURIComponent(schoolId)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
@@ -217,9 +217,9 @@ export default function PaymentsTestPage() {
           {verifyResult && (
             <div className="rounded bg-muted/50 p-3 text-xs font-mono space-y-1">
               <p><strong>playerCount:</strong> {verifyResult.playerCount}</p>
-              <p><strong>playerIds:</strong> {verifyResult.playerIds.join(", ") || "(ninguno)"}</p>
-              {Object.keys(verifyResult.players).length > 0 && (
-                <p><strong>players (id → nombre):</strong> {JSON.stringify(verifyResult.players)}</p>
+              <p><strong>playerIds:</strong> {verifyResult.socioIds.join(", ") || "(ninguno)"}</p>
+              {Object.keys(verifyResult.socios).length > 0 && (
+                <p><strong>players (id → nombre):</strong> {JSON.stringify(verifyResult.socios)}</p>
               )}
               <pre className="mt-2 overflow-auto max-h-48">{JSON.stringify(verifyResult, null, 2)}</pre>
             </div>
@@ -243,11 +243,11 @@ export default function PaymentsTestPage() {
               <SelectContent>
                 {[
                   ...new Set([
-                    ...(verifyResult?.playerIds ?? []),
+                    ...(verifyResult?.socioIds ?? []),
                     ...(activePlayers.map((p) => p.id) ?? []),
                   ]),
                 ].map((id) => {
-                  const name = verifyResult?.players?.[id] ?? (() => {
+                  const name = verifyResult?.socios?.[id] ?? (() => {
                     const p = activePlayers.find((x) => x.id === id);
                     return p ? [p.lastName, p.firstName].filter(Boolean).join(", ") : "";
                   })();
@@ -298,7 +298,7 @@ export default function PaymentsTestPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-xs font-mono">
           <p><strong>schoolId:</strong> {schoolId}</p>
-          <p><strong>playerIds (del backend):</strong> {(verifyResult?.playerIds ?? []).join(", ") || "— Ejecutá el paso 2 primero"}</p>
+          <p><strong>socioIds (del backend):</strong> {(verifyResult?.socioIds ?? []).join(", ") || "— Ejecutá el paso 2 primero"}</p>
           <p className="text-muted-foreground mt-2">
             Ejemplo body webhook: {`{ "schoolId": "${schoolId}", "playerId": "<uno de los playerIds>", "period": "2026-02", "amount": 15000, "currency": "ARS" }`}
           </p>

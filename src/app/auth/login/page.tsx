@@ -33,7 +33,7 @@ export default function LoginPage() {
   const createInitialData = async (user: User) => {
     const platformUserRef = doc(firestore, 'platformUsers', user.uid);
 
-    // Bootstrap logic for the super admin. On every login, it ensures the super_admin
+    // Bootstrap logic for the super admin. On every login, it ensures the gerente_club
     // flag is correctly set, creating or updating the document as needed.
     if (user.email === 'abengolea1@gmail.com') {
       try {
@@ -90,9 +90,23 @@ export default function LoginPage() {
       router.push("/dashboard");
 
     } catch (authError: any) {
-      const description = authError.code === 'auth/invalid-credential' 
-          ? "El correo electrónico o la contraseña son incorrectos." 
-          : "Ocurrió un error inesperado al iniciar sesión.";
+      console.error("Login error:", authError?.code, authError?.message, authError);
+      const code = authError?.code ?? "";
+      const msg = authError?.message ?? "";
+      let description: string;
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+        description = "El correo electrónico o la contraseña son incorrectos.";
+      } else if (code === "auth/too-many-requests") {
+        description = "Demasiados intentos. Esperá unos minutos antes de intentar de nuevo.";
+      } else if (code === "auth/network-request-failed") {
+        description = "Error de conexión. Verificá tu internet e intentá de nuevo.";
+      } else if (code === "auth/operation-not-allowed") {
+        description = "El inicio de sesión con correo/contraseña no está habilitado en este proyecto.";
+      } else if (code === "auth/invalid-email") {
+        description = "El correo electrónico no es válido.";
+      } else {
+        description = msg || "Ocurrió un error inesperado al iniciar sesión.";
+      }
       toast({
         variant: "destructive",
         title: "Error al iniciar sesión",
@@ -141,7 +155,7 @@ export default function LoginPage() {
     setEmail('abengolea1@gmail.com');
     setPassword('');
     toast({
-        title: "Credenciales de Super Admin cargadas",
+        title: "Credenciales de Gerente del Club cargadas",
         description: "Ingresa la contraseña y pulsa 'Iniciar Sesión'.",
     });
   }
@@ -151,35 +165,35 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-sm shadow-2xl border-2">
+    <Card className="w-full max-w-sm shadow-xl border border-border bg-white">
       <CardHeader>
         <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl font-headline">Iniciar Sesión</CardTitle>
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prefillSuperAdmin} disabled={isLoggingIn}>
-                            <Shield className="h-5 w-5 text-muted-foreground" />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>Acceso Rápido Super Admin</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
+          <CardTitle className="text-2xl font-headline text-crsn-text-dark">Iniciar Sesión</CardTitle>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prefillSuperAdmin} disabled={isLoggingIn}>
+                  <Shield className="h-5 w-5 text-muted-foreground" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Acceso Rápido Gerente del Club</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         <CardDescription>
-          Ingresá con tu correo y contraseña. Si no tenés cuenta, registrate primero como jugador.
+          Ingresá con tu correo y contraseña. Si no tenés cuenta, registrate primero como socio.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleEmailLogin} className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="email">Correo Electrónico</Label>
+            <Label htmlFor="email" className="font-semibold text-crsn-text-dark">Correo Electrónico</Label>
             <Input
               id="email"
               type="email"
-              placeholder="profe@example.com"
+              placeholder="socio@example.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -188,13 +202,13 @@ export default function LoginPage() {
           </div>
           <div className="grid gap-2">
             <div className="flex items-center">
-              <Label htmlFor="password">Contraseña</Label>
+              <Label htmlFor="password" className="font-semibold text-crsn-text-dark">Contraseña</Label>
               <Button
                 type="button"
                 variant="link"
                 onClick={handlePasswordReset}
                 disabled={isLoggingIn}
-                className="ml-auto inline-block p-0 h-auto text-sm underline"
+                className="ml-auto inline-block p-0 h-auto text-sm text-crsn-orange hover:text-crsn-orange-hover underline"
               >
                 ¿Olvidaste tu contraseña?
               </Button>
@@ -208,16 +222,16 @@ export default function LoginPage() {
               disabled={isLoggingIn}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={isLoggingIn}>
+          <Button type="submit" className="w-full bg-crsn-orange hover:bg-crsn-orange-hover text-white font-semibold" disabled={isLoggingIn}>
             {isLoggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Iniciar Sesión
           </Button>
         </form>
-        <div className="mt-4 text-center text-sm">
+        <div className="mt-4 text-center text-sm text-muted-foreground">
           <p>
             ¿No tenés cuenta?{" "}
-            <Link href="/auth/registro" className="underline">
-              Registrate como jugador
+            <Link href="/auth/registro" className="text-crsn-orange hover:text-crsn-orange-hover font-medium underline">
+              Registrate como socio
             </Link>
           </p>
         </div>

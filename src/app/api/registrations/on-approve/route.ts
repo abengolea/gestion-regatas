@@ -1,7 +1,7 @@
 /**
  * POST /api/registrations/on-approve
  * Envía por sistema el email "Fuiste aceptado" al jugador recién aprobado.
- * Solo admin o coach de la escuela puede llamar.
+ * Solo admin o encargado_deportivo de la escuela puede llamar.
  * Escribe en la colección `mail` para que la extensión Trigger Email (firestore-send-email) envíe el correo.
  * Usa plantilla con logo (email-template-server).
  */
@@ -17,8 +17,10 @@ import {
 const MAIL_COLLECTION = "mail";
 
 const bodySchema = {
-  schoolId: (v: unknown) => typeof v === "string" && v.length > 0,
-  playerId: (v: unknown) => typeof v === "string" && v.length > 0,
+  schoolId: (v: unknown) => typeof v === "string" && (v as string).length > 0,
+  subcomisionId: (v: unknown) => typeof v === "string" && (v as string).length > 0,
+  playerId: (v: unknown) => typeof v === "string" && (v as string).length > 0,
+  socioId: (v: unknown) => typeof v === "string" && (v as string).length > 0,
   playerEmail: (v: unknown) => typeof v === "string" && (v as string).includes("@"),
 };
 
@@ -30,9 +32,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+    const schoolId = (body.subcomisionId ?? body.schoolId) as string;
+    const playerId = (body.socioId ?? body.playerId) as string;
     if (
-      !bodySchema.schoolId(body.schoolId) ||
-      !bodySchema.playerId(body.playerId) ||
+      !bodySchema.schoolId(schoolId) ||
+      !bodySchema.playerId(playerId) ||
       !bodySchema.playerEmail(body.playerEmail)
     ) {
       return NextResponse.json(
@@ -43,10 +47,10 @@ export async function POST(request: Request) {
 
     const db = getAdminFirestore();
 
-    // Verificar que el usuario sea admin o coach de la escuela
+    // Verificar que el usuario sea admin o encargado_deportivo de la escuela
     const schoolUserSnap = await db
-      .collection("schools")
-      .doc(body.schoolId)
+      .collection("subcomisiones")
+      .doc(schoolId)
       .collection("users")
       .doc(auth.uid)
       .get();
@@ -59,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     const role = schoolUserSnap.data()?.role;
-    if (role !== "school_admin" && role !== "coach") {
+    if (role !== "admin_subcomision" && role !== "encargado_deportivo") {
       return NextResponse.json(
         { error: "Solo admin o entrenador puede aprobar solicitudes" },
         { status: 403 }
@@ -67,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     const to = (body.playerEmail as string).trim().toLowerCase();
-    const subject = "Fuiste aceptado - Escuelas River";
+    const subject = "Fuiste aceptado - Regatas+";
     const contentHtml = `
       <p>Tu solicitud de registro fue <strong>aceptada</strong>.</p>
       <p>Ya podés ingresar al panel con tu email y la contraseña que elegiste al registrarte.</p>

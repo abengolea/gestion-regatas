@@ -1,0 +1,169 @@
+---
+description: Especificación completa Regatas+ v2 — contexto, stack, modelos, flujos y API
+alwaysApply: true
+---
+
+# Regatas+ v2 — Master Prompt / Contexto del proyecto
+
+## Contexto del proyecto
+
+**Regatas+** es el sistema de beneficios para socios del **Club de Regatas San Nicolás** (San Nicolás de los Arroyos, Buenos Aires, Argentina).
+
+Socios activos obtienen descuentos en comercios locales adheridos. Los comercios firman un convenio gratuito y ofrecen mínimo 10% de descuento. Los socios verifican su membresía con un QR dinámico desde la app.
+
+---
+
+## Stack tecnológico (v2)
+
+### Frontend
+- **React 18** + TypeScript · Vite · React Router v6
+- **React Native** (Expo) para app móvil iOS/Android
+- **Zustand** para estado global
+- **TanStack Query** para server state y cache
+- **Tailwind CSS** + **Shadcn/ui** + **Lucide React**
+
+### Backend
+- **Node.js** + **Express** + TypeScript
+- **PostgreSQL** + **Prisma ORM**
+- **Redis** para cache, sesiones y tokens QR
+- **Bull** para colas de trabajos asincrónicos
+- **JWT** — access token 15min + refresh token 7 días
+- **Zod** para validación de esquemas en toda la API
+
+### Servicios externos
+- **Mercado Pago** — cobro de cuotas
+- **Firebase FCM** — push notifications
+- **SendGrid** — emails transaccionales
+- **AWS S3** — almacenamiento de archivos y logos
+
+---
+
+## Estructura del monorepo (v2)
+
+```
+regatas-plus/
+├── apps/
+│   ├── web-socios/        # React SPA — portal del socio
+│   ├── web-admin/         # React SPA — panel administrativo del club
+│   ├── web-comercios/     # React SPA — portal de comercios adheridos
+│   ├── web-landing/       # Next.js SSR — sitio público
+│   └── mobile/            # React Native (Expo) — app iOS/Android
+├── packages/
+│   ├── api/               # Node.js/Express — backend REST
+│   ├── shared/            # Tipos TypeScript compartidos
+│   └── ui/                # Componentes React compartidos
+└── docker-compose.yml
+```
+
+---
+
+## Roles de usuario
+
+| Rol        | Acceso |
+|------------|--------|
+| SOCIO      | app móvil + web-socios |
+| COMERCIO   | web-comercios (usos, perfil, escanear QR) |
+| STAFF      | web-admin (solo lectura + validación manual) |
+| ADMIN      | web-admin (gestión completa socios, comercios, convenios) |
+| SUPERADMIN | web-admin (+ gestión usuarios admin) |
+
+---
+
+## Modelo de datos (Prisma v2)
+
+- **Socio**: id, nombre, apellido, email, dni, estado (PENDIENTE|ACTIVO|MOROSO|SUSPENDIDO|BAJA), qrToken, etc.
+- **Comercio**: razonSocial, cuit, rubro, domicilio, logoUrl, estado, tokenInvitacion, etc.
+- **ComercioUser**: empleados con DUENO o EMPLEADO (solo escanear)
+- **Convenio**: comercioId, tipoBeneficio, porcentaje (mín 10 si descuento), topeUsosMes, fechas
+- **UsoBeneficio**: socioId, convenioId, metodoVerif (QR_APP|NUMERO_SOCIO|VERIFICACION_MANUAL)
+- **Pago**: socioId, monto, concepto, estado (PENDIENTE|PAGADO|VENCIDO)
+- **Notificacion**, **AdminUser**, **SocioImportStaging**
+
+---
+
+## Flujos principales
+
+### 1. Alta de socio (self-service)
+Registro con DNI+email+password → si DNI existe en base → ACTIVO; si no → PENDIENTE hasta aprobación admin. Confirmación de email obligatoria.
+
+### 2. Validación QR
+Socio genera QR (GET /api/socios/me/qr) → comercio escanea → POST /api/qr/validate con token+convenioId → backend verifica Redis, estado socio, convenio vigente, tope mensual → registra UsoBeneficio → invalida token (uso único).
+
+### 3. Carga masiva
+Admin sube CSV → SocioImportStaging → Bull job procesa → duplicados/errores marcados, exitosos crean Socio ACTIVO. Invitación masiva por email opcional.
+
+### 4. Portal comercios
+Invitación por email (token 7 días) → comercio activa cuenta → DUENO gestiona empleados, edita perfil, escanea QR. EMPLEADO solo escanea.
+
+---
+
+## Endpoints API
+
+### Auth socios
+POST /api/auth/registro, confirmar-email, login, refresh, logout, forgot-password, reset-password
+
+### Auth comercios
+POST /api/auth/comercio/activar-invitacion, login, refresh, logout
+
+### Socios (auth: SOCIO)
+GET/PUT /api/socios/me, GET /api/socios/me/qr, /me/beneficios, /me/usos, /me/pagos
+
+### QR
+GET /api/qr/generar (SOCIO), POST /api/qr/validate (COMERCIO o público)
+
+### Comercios
+GET/PUT /api/comercios/me, GET /me/convenio, /me/usos, /me/metricas, /me/empleados + CRUD empleados
+
+### Admin
+CRUD socios, comercios, convenios; importar, aprobar pendientes, reportes, notificaciones, usuarios admin
+
+---
+
+## Reglas de negocio críticas
+
+1. Solo socio **ACTIVO** puede generar QR y usar beneficios.
+2. QR **uso único por sesión** — al validar se invalida y se genera uno nuevo.
+3. Respuesta validación expone solo `nombreSocio` + `beneficio`, nunca email/DNI/teléfono.
+4. Si `topeUsosMes` definido, verificar antes de registrar.
+5. Descuento mínimo 10% si tipoBeneficio === "descuento".
+6. DNI encontrado en base + sin password → activación directa tras confirmar email. No encontrado → PENDIENTE.
+7. tokenInvitacion comercio: 7 días, uso único.
+8. EMPLEADO solo escanea; DUENO edita perfil y gestiona empleados.
+9. Importación masiva: Bull job, fallos no frenan batch.
+10. Pagos: informativos, admin actualiza estado.
+
+---
+
+## Variables de entorno
+
+DATABASE_URL, REDIS_URL, JWT_*_SECRET, JWT_ACCESS_EXPIRES=15m, JWT_REFRESH_EXPIRES=7d, SENDGRID_*, FIREBASE_*, AWS_*, FRONTEND_*_URL, MAX_IMPORT_BATCH_SIZE
+
+---
+
+## Instrucciones para Cursor
+
+- **TypeScript estricto** — cero `any`.
+- **Zod** en todos los inputs API. Schemas compartidos packages/api + packages/shared.
+- **Errores**: middleware centralizado, formato `{ error, code, details? }`.
+- **Paginación**: cursor-based, respuesta `{ data, nextCursor, total }`.
+- **Logs**: pino con requestId, userId, rol.
+- **Tests**: Vitest unit, Supertest integración (registro, validación QR, importación).
+- **Prisma**: transacciones para operaciones multi-tabla.
+- **Bull jobs**: packages/api/src/jobs/, cada job en archivo con tipos.
+- **Secrets**: validar env con Zod al arrancar.
+- **Archivos**: validar MIME y tamaño antes de S3. Logos: max 2MB, jpg/png/webp.
+
+---
+
+## Orden de implementación sugerido
+
+**Fase 1**: Monorepo, Prisma, Auth (3 tipos), POST /api/qr/validate, tests.
+**Fase 2**: Endpoints socios, comercios, importación masiva, admin.
+**Fase 3**: web-admin, web-comercios, web-socios, mobile.
+**Fase 4**: web-landing, notificaciones, reportes, invitación masiva.
+
+---
+
+## Nota sobre implementación actual
+
+El proyecto `regatas-admin` actual usa **Next.js 15**, **Firebase** y **Mercado Pago**. Esta especificación v2 describe una arquitectura con Express, Prisma y PostgreSQL. Usar este documento como referencia de dominio, flujos y reglas de negocio al implementar o migrar funcionalidades.

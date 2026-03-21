@@ -25,12 +25,14 @@ const severityLabels: Record<string, string> = {
 };
 
 interface TicketStatusProps {
-  schoolId: string;
+  subcomisionId?: string;
+  schoolId?: string;
   userId: string;
 }
 
-export function TicketStatus({ schoolId, userId }: TicketStatusProps) {
-  const path = schoolId ? `schools/${schoolId}/supportTickets` : '';
+export function TicketStatus({ subcomisionId: subcomisionIdProp, schoolId: schoolIdProp, userId }: TicketStatusProps) {
+  const schoolId = subcomisionIdProp ?? schoolIdProp;
+  const path = schoolId ? `subcomisiones/${schoolId}/supportTickets` : '';
   const { data: tickets, loading } = useCollection<SupportTicket>(
     path,
     {

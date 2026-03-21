@@ -23,7 +23,7 @@ import {
 import { doc, getDoc } from "firebase/firestore";
 import { useStorage, useFirestore } from "@/firebase/provider";
 import { useUser, useCollection } from "@/firebase";
-import type { Player } from "@/lib/types";
+import type { Socio } from "@/lib/types";
 import { uploadPlayerVideoWithProgress } from "@/lib/player-videos";
 import { buildEmailHtml, escapeHtml, htmlToPlainText, sendMailDoc } from "@/lib/email";
 import { useToast } from "@/hooks/use-toast";
@@ -34,8 +34,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface RecordOrUploadVideoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  schoolId: string;
-  initialPlayerId: string | null;
+  subcomisionId?: string;
+  /** @deprecated Use subcomisionId */
+  schoolId?: string;
+  initialSocioId?: string | null;
+  /** @deprecated Use initialSocioId */
+  initialPlayerId?: string | null;
   initialPlayerName: string;
   /** Si true, no mostrar selector de jugador (estamos en la página del jugador) */
   embedded?: boolean;
@@ -47,19 +51,23 @@ type Mode = "record" | "upload";
 export function RecordOrUploadVideoDialog({
   open,
   onOpenChange,
+  subcomisionId: subcomisionIdProp,
   schoolId,
+  initialSocioId: initialSocioIdProp,
   initialPlayerId,
   initialPlayerName,
   embedded = true,
   onSuccess,
 }: RecordOrUploadVideoDialogProps) {
+  const subcomisionId = subcomisionIdProp ?? schoolId;
+  const initialSocioId = initialSocioIdProp ?? initialPlayerId;
   const { user } = useUser();
   const storage = useStorage();
   const firestore = useFirestore();
   const { toast } = useToast();
 
   const [mode, setMode] = useState<Mode>("upload");
-  const [playerId, setPlayerId] = useState<string>(initialPlayerId ?? "");
+  const [socioId, setPlayerId] = useState<string>(initialSocioId ?? "");
   const [playerName, setPlayerName] = useState(initialPlayerName);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -76,14 +84,14 @@ export function RecordOrUploadVideoDialog({
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: players } = useCollection<Player>(
-    schoolId && !embedded ? `schools/${schoolId}/players` : ""
+  const { data: socios } = useCollection<Socio>(
+    subcomisionId && !embedded ? `subcomisiones/${subcomisionId}/socios` : ""
   );
-  const activePlayers = (players ?? []).filter((p) => !p.archived);
+  const activeSocios = (socios ?? []).filter((p) => !p.archived);
 
-  const effectivePlayerId = embedded ? initialPlayerId : playerId;
+  const effectiveSocioId = embedded ? initialSocioId : socioId;
   const canSubmit =
-    effectivePlayerId &&
+    effectiveSocioId &&
     user &&
     (mode === "upload" ? file : recordedBlob) &&
     !uploading;
@@ -194,7 +202,7 @@ export function RecordOrUploadVideoDialog({
   };
 
   const handleSubmit = async () => {
-    if (!effectivePlayerId || !user) return;
+    if (!effectiveSocioId || !user) return;
     let videoFile: File;
     if (mode === "upload" && file) {
       videoFile = file;
@@ -212,8 +220,8 @@ export function RecordOrUploadVideoDialog({
           storage,
           firestore,
           userId: user.uid,
-          schoolId,
-          playerId: effectivePlayerId,
+          subcomisionId,
+          socioId: effectiveSocioId,
           file: videoFile,
           title: title.trim() || undefined,
           description: description.trim() || undefined,
@@ -227,13 +235,13 @@ export function RecordOrUploadVideoDialog({
       });
       // Notificar por mail al jugador si tiene email
       try {
-        const playerRef = doc(firestore, `schools/${schoolId}/players/${effectivePlayerId}`);
+        const playerRef = doc(firestore, `subcomisiones/${subcomisionId}/socios/${effectiveSocioId}`);
         const playerSnap = await getDoc(playerRef);
-        const playerData = playerSnap.data();
-        const playerEmail = playerData?.email?.trim?.();
-        const firstName = playerData?.firstName ?? (playerName?.trim() || "jugador");
+        const socioData = playerSnap.data();
+        const playerEmail = socioData?.email?.trim?.();
+        const firstName = socioData?.firstName ?? (playerName?.trim() || "jugador");
         if (playerEmail) {
-          const subject = "Nuevo video en tu videoteca - Escuelas River";
+          const subject = "Nuevo video en tu videoteca - Regatas+";
           const contentHtml = `<p>Hola <strong>${escapeHtml(firstName)}</strong>,</p><p>Tu entrenador subió un nuevo video a tu videoteca. Entrá al panel para verlo.</p><p><a href="${typeof window !== "undefined" ? window.location.origin : ""}/dashboard" style="color: #f97316; font-weight: bold;">Ver mi videoteca</a></p>`;
           const html = buildEmailHtml(contentHtml, {
             title: "Escuelas River",
@@ -276,10 +284,10 @@ export function RecordOrUploadVideoDialog({
           <div className="space-y-2">
             <Label>Jugador</Label>
             <Select
-              value={playerId}
+              value={socioId}
               onValueChange={(id) => {
                 setPlayerId(id);
-                const p = activePlayers.find((x) => x.id === id);
+                const p = activeSocios.find((x) => x.id === id);
                 setPlayerName(p ? `${p.firstName} ${p.lastName}`.trim() : "");
               }}
             >
@@ -287,7 +295,7 @@ export function RecordOrUploadVideoDialog({
                 <SelectValue placeholder="Elige un jugador" />
               </SelectTrigger>
               <SelectContent>
-                {activePlayers.map((p) => (
+                {activeSocios.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.firstName} {p.lastName}
                   </SelectItem>

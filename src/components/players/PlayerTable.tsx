@@ -19,12 +19,14 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import type { Player } from "@/lib/types";
+import type { Socio } from "@/lib/types";
+import type { CategoriaViaje } from "@/lib/types/viaje";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   calculateAge,
   getBirthYearLabel,
+  getBirthDateFromPlayer,
   compareBirthYearLabel,
   BIRTH_YEAR_LABELS,
   parseBirthYearLabel,
@@ -36,7 +38,8 @@ import { FileDown, CreditCard, CheckCircle, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 type DelinquentInfo = {
-  playerId: string;
+  socioId?: string;
+  playerId?: string;
   period: string;
   amount: number;
   currency: string;
@@ -45,11 +48,11 @@ type DelinquentInfo = {
 
 type ClothingPendingItem = { period: string; amount: number; installmentIndex: number; totalInstallments: number };
 
-export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
+export function PlayerTable({ subcomisionId, schoolId: schoolIdProp }: { schoolId?: string; subcomisionId?: string }) {
   const router = useRouter();
   const { isReady, activeSchoolId: userActiveSchoolId, profile, user, isAdmin } = useUserProfile();
 
-  const schoolId = propSchoolId || userActiveSchoolId;
+  const schoolId = subcomisionId ?? schoolIdProp ?? userActiveSchoolId;
   const canListPlayers = profile?.role !== "player";
   const canSeePaymentStatus = isAdmin && !!schoolId;
 
@@ -65,7 +68,7 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
     if (!token) return;
     setPaymentStatusLoading(true);
     try {
-      const res = await fetch(`/api/payments/players-status?schoolId=${encodeURIComponent(schoolId)}`, {
+      const res = await fetch(`/api/payments/socios-status?schoolId=${encodeURIComponent(schoolId)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -88,6 +91,22 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
     fetchPaymentStatus();
   }, [fetchPaymentStatus]);
 
+  useEffect(() => {
+    if (!schoolId || !user || profile?.role === "player") return;
+    user.getIdToken().then((token) => {
+      fetch("/api/auth/ensure-user-doc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ schoolId }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data?.created) window.location.reload();
+        })
+        .catch(() => {});
+    });
+  }, [schoolId, user, profile?.role]);
+
   const posicionLabel: Record<string, string> = {
     arquero: "Arquero",
     defensor: "Defensor",
@@ -98,9 +117,30 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
     extremo: "Extremo",
   };
 
-  const { data: players, loading, error } = useCollection<Player>(
-    isReady && schoolId && canListPlayers ? `schools/${schoolId}/players` : '',
-    { orderBy: ['lastName', 'asc'] }
+  const { data: playersRaw, loading, error } = useCollection<Socio>(
+    isReady && schoolId && canListPlayers ? `subcomisiones/${schoolId}/socios` : '',
+    {}
+  );
+  const { data: categorias } = useCollection<CategoriaViaje & { orden?: number }>(
+    schoolId ? `subcomisiones/${schoolId}/categorias` : "",
+    {}
+  );
+  const categoriasById = useMemo(() => {
+    const map: Record<string, string> = {};
+    (categorias ?? []).forEach((c) => {
+      map[c.id] = c.nombre;
+    });
+    return map;
+  }, [categorias]);
+
+  const players = useMemo(
+    () =>
+      (playersRaw ?? []).slice().sort((a, b) => {
+        const lnA = (a.lastName ?? "").toLowerCase();
+        const lnB = (b.lastName ?? "").toLowerCase();
+        return lnA.localeCompare(lnB);
+      }),
+    [playersRaw]
   );
 
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -124,12 +164,13 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
           `${(p.lastName ?? "")} ${(p.firstName ?? "")}`.toLowerCase().includes(q)
       );
     }
-    const withCategory = base.map((p) => ({
-      player: p,
-      category: p.birthDate
-        ? getBirthYearLabel(p.birthDate instanceof Date ? p.birthDate : new Date(p.birthDate))
-        : "-",
-    }));
+    const withCategory = base.map((p) => {
+      const bd = getBirthDateFromPlayer(p);
+      return {
+        player: p,
+        category: bd ? getBirthYearLabel(bd) : "-",
+      };
+    });
     let filtered = withCategory;
     if (generoFilter === "masculino" || generoFilter === "femenino") {
       filtered = filtered.filter((x) => x.player.genero === generoFilter);
@@ -173,6 +214,7 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
       "Fecha de nacimiento",
       "Edad",
       "Cat. año nac.",
+      "Categoría",
       "Género",
       "DNI",
       "Obra social",
@@ -188,22 +230,37 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
       const s = String(v);
       return s.includes(",") || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const rows = sortedAndFilteredPlayers.map(({ player, category }) => [
-      escape(player.firstName),
-      escape(player.lastName),
-      escape(player.birthDate ? (player.birthDate instanceof Date ? player.birthDate.toISOString().slice(0, 10) : new Date(player.birthDate).toISOString().slice(0, 10)) : ""),
-      escape(player.birthDate ? String(calculateAge(player.birthDate)) : ""),
-      escape(category),
-      escape(player.genero === "masculino" ? "Masculino" : player.genero === "femenino" ? "Femenino" : ""),
-      escape(player.dni),
-      escape(player.healthInsurance),
-      escape(player.email),
-      escape(player.tutorContact?.phone),
-      escape(player.tutorContact?.name),
-      escape(player.posicion_preferida ? posicionLabel[player.posicion_preferida] ?? player.posicion_preferida : ""),
-      escape(player.status === "active" ? "Activo" : player.status === "suspended" ? "Mora" : "Inactivo"),
-      escape(player.observations),
-    ]);
+    const rows = sortedAndFilteredPlayers.map(({ player, category }) => {
+      const bd = getBirthDateFromPlayer(player);
+      const birthDateStr = bd ? bd.toISOString().slice(0, 10) : "";
+      const ageStr = bd ? String(calculateAge(bd)) : "";
+      const posicionStr = player.posicion_preferida
+        ? (posicionLabel[player.posicion_preferida] ?? player.posicion_preferida)
+        : "";
+      const statusStr =
+        player.status === "active"
+          ? "Activo"
+          : player.status === "suspended"
+            ? "Mora"
+            : "Inactivo";
+      return [
+        escape(player.firstName),
+        escape(player.lastName),
+        escape(birthDateStr),
+        escape(ageStr),
+        escape(category),
+        escape(player.categoriaId ? categoriasById[player.categoriaId] ?? player.categoriaId : ""),
+        escape(player.genero === "masculino" ? "Masculino" : player.genero === "femenino" ? "Femenino" : ""),
+        escape(player.dni),
+        escape(player.healthInsurance),
+        escape(player.email),
+        escape(player.tutorContact?.phone),
+        escape(player.tutorContact?.name),
+        escape(posicionStr),
+        escape(statusStr),
+        escape(player.observations),
+      ];
+    });
     const csv = [cols.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -377,7 +434,7 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
               </TableRow>
             ) : (
               sortedAndFilteredPlayers.map(({ player, category }) => {
-                const playerDelinquents = paymentStatus?.delinquents?.filter((d) => d.playerId === player.id) ?? [];
+                const playerDelinquents = paymentStatus?.delinquents?.filter((d) => (d.socioId ?? d.playerId) === player.id) ?? [];
                 const clothingPending = paymentStatus?.clothingPendingByPlayer?.[player.id] ?? [];
                 const hasPending = playerDelinquents.length > 0 || clothingPending.length > 0;
                 const pendingLabels: string[] = [];
@@ -399,7 +456,7 @@ export function PlayerTable({ schoolId: propSchoolId }: { schoolId?: string }) {
                   <span className="truncate text-sm sm:text-base">{player.firstName} {player.lastName}</span>
                 </div>
               </TableCell>
-              <TableCell className="text-xs sm:text-sm py-2 sm:py-3">{player.birthDate ? calculateAge(player.birthDate) : '-'}</TableCell>
+              <TableCell className="text-xs sm:text-sm py-2 sm:py-3">{(() => { const bd = getBirthDateFromPlayer(player); return bd ? calculateAge(bd) : '-'; })()}</TableCell>
               <TableCell className="text-xs sm:text-sm py-2 sm:py-3 whitespace-nowrap">{player.posicion_preferida ? posicionLabel[player.posicion_preferida] ?? player.posicion_preferida : '-'}</TableCell>
               <TableCell className="text-xs sm:text-sm py-2 sm:py-3 whitespace-nowrap">{category}</TableCell>
               <TableCell className="py-2 sm:py-3">

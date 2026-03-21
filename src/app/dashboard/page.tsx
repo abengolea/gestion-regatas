@@ -4,18 +4,18 @@ import React, { useEffect } from "react";
 import { useUserProfile } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SuperAdminDashboard } from "@/components/admin/SuperAdminDashboard";
-import { SchoolAdminDashboard } from "@/components/admin/SchoolAdminDashboard";
+import { SubcomisionAdminDashboard } from "@/components/admin/SchoolAdminDashboard";
 import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
   const { isReady, isSuperAdmin, profile } = useUserProfile();
   const router = useRouter();
 
-  const isPlayer = profile?.role === "player" && profile.activeSchoolId && profile.playerId;
+  const isPlayer = profile?.role === "player" && profile.activeSchoolId && profile.socioId;
 
   useEffect(() => {
     if (isReady && isPlayer) {
-      router.replace(`/dashboard/players/${profile!.playerId!}?schoolId=${profile!.activeSchoolId!}`);
+      router.replace(`/dashboard/players/${profile!.playerId!}?subcomisionId=${profile!.activeSchoolId!}`);
     }
   }, [isReady, isPlayer, profile?.playerId, profile?.activeSchoolId, router]);
 
@@ -49,5 +49,5 @@ export default function DashboardPage() {
       return <SuperAdminDashboard />;
   }
 
-  return <SchoolAdminDashboard />;
+  return <SubcomisionAdminDashboard />;
 }

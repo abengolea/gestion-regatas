@@ -6,8 +6,8 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 export interface CreatePreferenceParams {
-  playerId: string;
-  schoolId: string;
+  socioId: string;
+  subcomisionId: string;
   period: string;
   amount: number;
   currency: string;
@@ -37,19 +37,19 @@ export async function createMercadoPagoPreference(
 
   const title =
     params.period === 'inscripcion'
-      ? 'Derecho de inscripción - Escuelas River'
+      ? 'Derecho de inscripción - Regatas+'
       : params.period.startsWith('ropa-')
-        ? `Pago de ropa (${params.period.replace('ropa-', '')}) - Escuelas River`
-        : `Cuota ${params.period} - Escuelas River`;
+        ? `Pago de ropa (${params.period.replace('ropa-', '')}) - Regatas+`
+        : `Cuota ${params.period} - Regatas+`;
 
-  const notificationUrl = `${BASE_URL}/api/payments/webhook/mercadopago?schoolId=${encodeURIComponent(params.schoolId)}`;
-  const externalReference = `${params.schoolId}|${params.playerId}|${params.period}`;
+  const notificationUrl = `${BASE_URL}/api/payments/webhook/mercadopago?schoolId=${encodeURIComponent(params.subcomisionId)}`;
+  const externalReference = `${params.subcomisionId}|${params.socioId}|${params.period}`;
 
   const paymentsUrl = `${BASE_URL}/dashboard/payments`;
   const body = {
     items: [
       {
-        id: `cuota-${params.period}-${params.playerId}`,
+        id: `cuota-${params.period}-${params.socioId}`,
         title,
         quantity: 1,
         unit_price: params.amount,

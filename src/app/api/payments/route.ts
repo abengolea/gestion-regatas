@@ -1,5 +1,5 @@
 /**
- * GET /api/payments?schoolId=...&...
+ * GET /api/payments?subcomisionId=...&...
  * Lista pagos con filtros (admin de escuela).
  */
 
@@ -17,9 +17,9 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId');
+    const schoolId = searchParams.get('schoolId') ?? searchParams.get('subcomisionId') ?? '';
     const parsed = listPaymentsSchema.safeParse({
-      schoolId: schoolId ?? '',
+      schoolId,
       filters: {
         dateFrom: searchParams.get('dateFrom') ?? undefined,
         dateTo: searchParams.get('dateTo') ?? undefined,
@@ -46,6 +46,9 @@ export async function GET(request: Request) {
 
     const { schoolId: sid, filters, limit, offset } = parsed.data;
     const db = getAdminFirestore();
+    if (!sid) {
+      return NextResponse.json({ error: 'schoolId requerido' }, { status: 400 });
+    }
 
     const archivedIds = await getArchivedPlayerIds(db, sid);
     const requestedLimit = limit ?? 50;
@@ -54,16 +57,16 @@ export async function GET(request: Request) {
       limit: requestedLimit,
       offset,
     });
-    const paymentsFiltered = rawPayments.filter((p) => !archivedIds.has(p.playerId));
+    const paymentsFiltered = rawPayments.filter((p) => !archivedIds.has(p.socioId ?? p.playerId ?? ''));
     const total = paymentsFiltered.length;
     const payments = paymentsFiltered.slice(offset, offset + (limit ?? 50));
 
     // Agrupar playerIds por schoolId del pago (por si algún pago tuviera otra escuela)
     const playerIdsBySchool = new Map<string, Set<string>>();
     for (const p of payments) {
-      const school = p.schoolId || sid;
+      const school = p.subcomisionId ?? p.schoolId ?? sid;
       const set = playerIdsBySchool.get(school) ?? new Set<string>();
-      set.add(p.playerId);
+      set.add(p.socioId ?? p.playerId ?? '');
       playerIdsBySchool.set(school, set);
     }
     const allNames = new Map<string, string>();
@@ -86,7 +89,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       payments: payments.map((p) => ({
         ...p,
-        playerName: resolveName(p.playerId),
+        playerName: resolveName(p.socioId ?? p.playerId ?? ''),
         paidAt: p.paidAt?.toISOString(),
         createdAt: p.createdAt.toISOString(),
       })),

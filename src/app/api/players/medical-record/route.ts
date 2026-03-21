@@ -1,5 +1,5 @@
 /**
- * POST /api/players/medical-record
+ * POST /api/socios/medical-record
  * Guarda en el jugador la ficha médica recién subida (url, storagePath, uploadedAt, uploadedBy).
  * Autorizado: el propio jugador (email coincide) o staff de la escuela.
  */
@@ -10,8 +10,10 @@ import { verifyIdToken } from "@/lib/auth-server";
 import { Timestamp } from "firebase-admin/firestore";
 
 type Payload = {
-  schoolId: string;
-  playerId: string;
+  schoolId?: string;
+  subcomisionId?: string;
+  playerId?: string;
+  socioId?: string;
   url: string;
   storagePath: string;
   uploadedAt: string | { seconds: number; nanoseconds: number };
@@ -36,7 +38,9 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as Payload;
-    const { schoolId, playerId, url, storagePath, uploadedAt, uploadedBy } = body;
+    const schoolId = body.subcomisionId ?? body.schoolId;
+    const playerId = body.socioId ?? body.playerId;
+    const { url, storagePath, uploadedAt, uploadedBy } = body;
     if (!schoolId || !playerId || !url || !storagePath || !uploadedBy) {
       return NextResponse.json(
         { error: "Faltan schoolId, playerId, url, storagePath o uploadedBy" },
@@ -48,19 +52,19 @@ export async function POST(request: Request) {
     const uid = auth.uid;
     const userEmail = auth.email?.trim().toLowerCase();
 
-    const playerSnap = await db.doc(`schools/${schoolId}/players/${playerId}`).get();
+    const playerSnap = await db.collection('subcomisiones').doc(schoolId).collection('socios').doc(playerId).get();
     if (!playerSnap.exists) {
       return NextResponse.json({ error: "Jugador no encontrado" }, { status: 404 });
     }
-    const playerData = playerSnap.data() as { email?: string };
-    const playerEmail = (playerData?.email ?? "").trim().toLowerCase();
+    const socioData = playerSnap.data() as { email?: string };
+    const playerEmail = (socioData?.email ?? "").trim().toLowerCase();
 
     const isPlayerSelf = !!userEmail && playerEmail === userEmail;
     const schoolUserSnap = await db.doc(`schools/${schoolId}/users/${uid}`).get();
     const schoolUserData = schoolUserSnap.data() as { role?: string } | undefined;
     const isStaff =
       schoolUserSnap.exists &&
-      (schoolUserData?.role === "school_admin" || schoolUserData?.role === "coach");
+      (schoolUserData?.role === "admin_subcomision" || schoolUserData?.role === "encargado_deportivo");
 
     if (!isPlayerSelf && !isStaff) {
       return NextResponse.json(
@@ -77,7 +81,7 @@ export async function POST(request: Request) {
       // No tocamos approvedAt/approvedBy; si había aprobación anterior y se reemplaza el PDF, queda pendiente de nuevo
     };
 
-    await db.doc(`schools/${schoolId}/players/${playerId}`).update({
+    await db.collection('subcomisiones').doc(schoolId).collection('socios').doc(playerId).update({
       medicalRecord,
     });
 

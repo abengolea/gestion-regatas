@@ -1,6 +1,6 @@
 # Migración a la base de datos de la app nueva
 
-Esta guía explica cómo migrar a un proyecto Firebase nuevo en lugar de `lexflow-consultas` (usado por Escuelas River).
+Esta guía explica cómo migrar a un proyecto Firebase nuevo en lugar de `lexflow-consultas` (usado por Regatas+).
 
 ## 1. Crear / obtener el proyecto Firebase de la app nueva
 
@@ -40,7 +40,7 @@ Para que los scripts y las API routes funcionen con el nuevo proyecto:
 npm run seed:super-admin
 ```
 
-Eso crea el usuario `abengolea1@gmail.com` en Auth y el documento `platformUsers` con `super_admin: true`.
+Eso crea el usuario `abengolea1@gmail.com` en Auth y el documento `platformUsers` con `gerente_club: true`.
 
 ## 5. Reglas de Firestore
 

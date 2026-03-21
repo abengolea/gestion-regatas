@@ -23,8 +23,9 @@ export function NotaForm({ mode, post }: NotaFormProps) {
   const router = useRouter();
   const { app } = useFirebase();
   const { toast } = useToast();
-  const [schools, setSchools] = useState<Array<{ schoolId: string; schoolName: string; schoolSlug: string }>>([]);
+  const [subcomisiones, setSchools] = useState<Array<{ subcomisionId: string; schoolName: string; subcomisionSlug: string; schoolId?: string }>>([]);
   const [schoolId, setSchoolId] = useState("");
+  const schools = subcomisiones.map((s) => ({ ...s, schoolId: s.subcomisionId }));
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [excerpt, setExcerpt] = useState("");
@@ -35,7 +36,7 @@ export function NotaForm({ mode, post }: NotaFormProps) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const currentSchool = schools.find((s) => s.schoolId === schoolId);
+  const currentSchool = schools.find((s: { schoolId?: string; subcomisionId: string }) => (s.schoolId ?? s.subcomisionId) === schoolId);
 
   useEffect(() => {
     if (!app) return;
@@ -49,7 +50,7 @@ export function NotaForm({ mode, post }: NotaFormProps) {
           const list = data.schools ?? [];
           setSchools(list);
           if (list.length > 0 && !schoolId) {
-            setSchoolId(list[0].schoolId);
+            setSchoolId(list[0].subcomisionId ?? (list[0] as { schoolId?: string }).schoolId ?? "");
           }
         });
     });
@@ -64,7 +65,7 @@ export function NotaForm({ mode, post }: NotaFormProps) {
       setTagsStr((post.tags ?? []).join(", "));
       setCoverImageUrl(post.coverImageUrl ?? "");
       setCoverImageName(post.coverImageUrl ? "Imagen guardada" : "");
-      setSchoolId(post.schoolId);
+      setSchoolId(post.subcomisionId ?? (post as { schoolId?: string }).schoolId ?? "");
     }
   }, [mode, post]);
 
@@ -123,8 +124,9 @@ export function NotaForm({ mode, post }: NotaFormProps) {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({
-            schoolId: currentSchool.schoolId,
-            schoolSlug: currentSchool.schoolSlug,
+            schoolId: currentSchool.schoolId ?? currentSchool.subcomisionId,
+            subcomisionId: currentSchool.subcomisionId,
+            subcomisionSlug: currentSchool.subcomisionSlug,
             schoolName: currentSchool.schoolName,
             title,
             slug: slug || slugify(title),
@@ -174,7 +176,7 @@ export function NotaForm({ mode, post }: NotaFormProps) {
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             required
           >
-            {schools.map((s) => (
+            {schools.map((s: { schoolId?: string; subcomisionId: string; schoolName: string }) => (
               <option key={s.schoolId} value={s.schoolId}>
                 {s.schoolName}
               </option>

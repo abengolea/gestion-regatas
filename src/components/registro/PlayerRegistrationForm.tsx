@@ -26,12 +26,12 @@ import { useAuth, useFirestore } from "@/firebase";
 import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { collection, doc, addDoc, setDoc, Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import type { School } from "@/lib/types";
+import type { Subcomision } from "@/lib/types";
 import { useCollection } from "@/firebase";
 
 const registrationSchema = z
   .object({
-    schoolId: z.string().min(1, "Seleccioná una escuela."),
+    subcomisionId: z.string().min(1, "Seleccioná una escuela."),
     firstName: z.string().min(1, "El nombre es requerido."),
     lastName: z.string().min(1, "El apellido es requerido."),
     email: z.string().email("Debe ser un email válido."),
@@ -56,15 +56,15 @@ export function PlayerRegistrationForm() {
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
 
-  const { data: schools, loading: schoolsLoading } = useCollection<School>(
-    "schools",
+  const { data: subcomisiones, loading: schoolsLoading } = useCollection<Subcomision>(
+    "subcomisiones",
     { orderBy: ["name", "asc"] }
   );
 
   const form = useForm<RegistrationFormValues>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
-      schoolId: "",
+      subcomisionId: "",
       firstName: "",
       lastName: "",
       email: "",
@@ -84,7 +84,7 @@ export function PlayerRegistrationForm() {
       // 2. Crear solicitud pendiente en la escuela con nombre y apellido
       const pendingRef = collection(
         firestore,
-        `schools/${values.schoolId}/pendingPlayers`
+        `subcomisiones/${values.subcomisionId}/pendingPlayers`
       );
       await addDoc(pendingRef, {
         firstName: values.firstName.trim(),
@@ -96,8 +96,8 @@ export function PlayerRegistrationForm() {
         submittedBy: auth.currentUser?.uid ?? "",
       });
 
-      await setDoc(doc(firestore, "pendingPlayerByEmail", emailNorm), {
-        schoolId: values.schoolId,
+      await setDoc(doc(firestore, "pendingSocioByEmail", emailNorm), {
+        subcomisionId: values.subcomisionId,
         createdAt: Timestamp.now(),
       });
 
@@ -152,7 +152,7 @@ export function PlayerRegistrationForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
         <FormField
           control={form.control}
-          name="schoolId"
+          name="subcomisionId"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Escuela</FormLabel>
@@ -163,9 +163,9 @@ export function PlayerRegistrationForm() {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {(schools ?? [])
-                    .filter((s) => s.status === "active")
-                    .map((school) => (
+                  {(subcomisiones ?? [])
+                    .filter((s: Subcomision) => s.status === "active")
+                    .map((school: Subcomision) => (
                       <SelectItem key={school.id} value={school.id}>
                         {school.name}
                       </SelectItem>

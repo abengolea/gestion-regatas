@@ -2,7 +2,7 @@
   "entities": {
     "PlatformUser": {
       "title": "Usuario de Plataforma",
-      "description": "Representa un usuario con roles globales en la plataforma, como super_admin.",
+      "description": "Representa un usuario con roles globales en la plataforma, como gerente_club.",
       "type": "object",
       "properties": {
         "email": { "type": "string", "format": "email" },
@@ -11,7 +11,7 @@
       },
       "required": ["email", "createdAt"]
     },
-    "School": {
+    "Subcomision": {
       "title": "Escuela",
       "description": "Representa una escuela o sede de fútbol.",
       "type": "object",
@@ -32,24 +32,24 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "schoolId": { "type": "string" },
+        "subcomisionId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "schoolId", "createdAt"]
     },
-    "SchoolUser": {
+    "SubcomisionUser": {
       "title": "Usuario de Escuela",
       "description": "Rol y permisos de un usuario dentro de una escuela.",
       "type": "object",
       "properties": {
         "displayName": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["school_admin", "coach"] },
+        "role": { "type": "string", "enum": ["admin_subcomision", "encargado_deportivo"] },
         "assignedCategories": { "type": "array", "items": { "type": "string" }, "description": "Lista de IDs de categorías asignadas a un entrenador."}
       },
       "required": ["displayName", "email", "role"]
     },
-    "Player": {
+    "Socio": {
       "title": "Jugador",
       "description": "Un jugador de fútbol.",
       "type": "object",
@@ -87,7 +87,7 @@
       "description": "Registro de evaluación de un jugador en una fecha específica.",
       "type": "object",
       "properties": {
-        "playerId": { "type": "string" },
+        "socioId": { "type": "string" },
         "date": { "type": "string", "format": "date-time" },
         "coachComments": { "type": "string" },
         "physical": {
@@ -144,8 +144,8 @@
       "schema": { "$ref": "#/entities/PlatformUser" },
       "description": "Almacena los roles globales de los usuarios (super_admin)."
     },
-    "/schools/{schoolId}": {
-      "schema": { "$ref": "#/entities/School" },
+    "/subcomisiones/{schoolId}": {
+      "schema": { "$ref": "#/entities/Subcomision" },
       "description": "Colección de todas las escuelas."
     },
      "/schools/{schoolId}/categories/{categoryId}": {
@@ -156,11 +156,11 @@
       "schema": { "$ref": "#/entities/SchoolUser" },
       "description": "Usuarios y sus roles para esta escuela."
     },
-    "/schools/{schoolId}/players/{playerId}": {
-      "schema": { "$ref": "#/entities/Player" },
+    "/schools/{schoolId}/socios/{playerId}": {
+      "schema": { "$ref": "#/entities/Socio" },
       "description": "Jugadores de esta escuela."
     },
-    "/schools/{schoolId}/pendingPlayers/{pendingId}": {
+    "/schools/{schoolId}/pendingSocios/{pendingId}": {
       "schema": { "$ref": "#/entities/PendingPlayer" },
       "description": "Solicitudes de registro de jugadores pendientes de aprobación para esta escuela."
     },

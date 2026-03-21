@@ -13,8 +13,12 @@ import { EvaluationDetailDisplay } from "./EvaluationDetailDisplay";
 import { EvaluationEvolutionCharts } from "./EvaluationEvolutionCharts";
 
 interface EvaluationsTabProps {
-  playerId: string;
-  schoolId: string;
+  socioId?: string;
+  subcomisionId?: string;
+  /** @deprecated Use socioId */
+  playerId?: string;
+  /** @deprecated Use subcomisionId */
+  schoolId?: string;
   evaluations: Evaluation[] | undefined;
   loading: boolean;
   error: unknown;
@@ -25,6 +29,8 @@ interface EvaluationsTabProps {
 }
 
 export function EvaluationsTab({
+  socioId: socioIdProp,
+  subcomisionId: subcomisionIdProp,
   playerId,
   schoolId,
   evaluations,
@@ -34,6 +40,8 @@ export function EvaluationsTab({
   onEditClick,
   isViewingAsPlayer = false,
 }: EvaluationsTabProps) {
+  const socioId = socioIdProp ?? playerId;
+  const subcomisionId = subcomisionIdProp ?? schoolId;
   if (loading) {
     return (
       <div className="space-y-4">
@@ -131,7 +139,7 @@ export function EvaluationsTab({
                   <AccordionContent>
                     <EvaluationDetailDisplay
                       evaluation={evaluation}
-                      schoolId={schoolId}
+                      subcomisionId={subcomisionId!}
                       onDeleted={() => {}}
                       onEditClick={onEditClick}
                     />

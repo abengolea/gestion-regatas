@@ -40,8 +40,12 @@ import { es } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
 
 interface AddPhysicalAssessmentSheetProps {
-  playerId: string;
-  schoolId: string;
+  socioId?: string;
+  subcomisionId?: string;
+  /** @deprecated Use socioId */
+  playerId?: string;
+  /** @deprecated Use subcomisionId */
+  schoolId?: string;
   birthDate: Date;
   playerName?: string;
   isOpen: boolean;
@@ -99,6 +103,8 @@ function getValuesFromAssessment(a: PhysicalAssessment): Partial<FormValues> {
 }
 
 export function AddPhysicalAssessmentSheet({
+  socioId: socioIdProp,
+  subcomisionId: subcomisionIdProp,
   playerId,
   schoolId,
   birthDate,
@@ -107,6 +113,8 @@ export function AddPhysicalAssessmentSheet({
   onOpenChange,
   editingAssessment = null,
 }: AddPhysicalAssessmentSheetProps) {
+  const socioId = socioIdProp ?? playerId;
+  const subcomisionId = subcomisionIdProp ?? schoolId;
   const firestore = useFirestore();
   const { toast } = useToast();
   const { profile } = useUserProfile();
@@ -116,7 +124,7 @@ export function AddPhysicalAssessmentSheet({
     customFieldsByAgeGroup?: Partial<Record<PhysicalAgeGroup, Array<{ key: string; label: string; unit?: string; type: string; min?: number; max?: number; placeholder?: string; category?: string }>>>;
     fieldOverridesByAgeGroup?: Partial<Record<PhysicalAgeGroup, Record<string, object>>>;
   }>(
-    schoolId ? `schools/${schoolId}/physicalAssessmentConfig/default` : ""
+    subcomisionId ? `subcomisiones/${subcomisionId}/physicalAssessmentConfig/default` : ""
   );
   const { data: globalTemplate } = useDoc<PhysicalAssessmentTemplate & { id: string }>(
     "platformConfig/physicalAssessmentTemplate"
@@ -177,7 +185,8 @@ export function AddPhysicalAssessmentSheet({
     }
 
     const payload = {
-      playerId,
+      socioId,
+      playerId: socioId, // compat legacy
       date: isEditMode ? (editingAssessment!.date instanceof Date ? editingAssessment!.date : new Date(editingAssessment!.date)) : fechaRef,
       edad_en_meses: edadEnMeses,
       altura_cm: altura,
@@ -190,13 +199,13 @@ export function AddPhysicalAssessmentSheet({
 
     // Al guardar/actualizar evaluación física, sincronizamos altura y peso en el perfil del jugador (el último dato borra el anterior)
     const updatePlayerPhysical = () =>
-      updateDoc(doc(firestore, `schools/${schoolId}/players/${playerId}`), {
+      updateDoc(doc(firestore, `subcomisiones/${subcomisionId}/socios/${socioId}`), {
         altura_cm: altura ?? null,
         peso_kg: peso ?? null,
       });
 
     if (isEditMode && editingAssessment) {
-      const docRef = doc(firestore, `schools/${schoolId}/physicalAssessments/${editingAssessment.id}`);
+      const docRef = doc(firestore, `subcomisiones/${subcomisionId}/physicalAssessments/${editingAssessment.id}`);
       updateDoc(docRef, payload)
         .then(() => updatePlayerPhysical())
         .then(() => {
@@ -217,7 +226,7 @@ export function AddPhysicalAssessmentSheet({
       createdBy: profile.uid,
     };
 
-    addDoc(collection(firestore, `schools/${schoolId}/physicalAssessments`), docData)
+    addDoc(collection(firestore, `subcomisiones/${subcomisionId}/physicalAssessments`), docData)
       .then(() => updatePlayerPhysical())
       .then(() => {
         toast({ title: "Evaluación física guardada" });
@@ -226,7 +235,7 @@ export function AddPhysicalAssessmentSheet({
       })
       .catch(() => {
         errorEmitter.emit("permission-error", new FirestorePermissionError({
-          path: `schools/${schoolId}/physicalAssessments`,
+          path: `subcomisiones/${subcomisionId}/physicalAssessments`,
           operation: "create",
           requestResourceData: docData,
         }));

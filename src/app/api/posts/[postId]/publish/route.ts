@@ -23,7 +23,7 @@ export async function POST(
       return NextResponse.json({ error: "Nota no encontrada" }, { status: 404 });
     }
 
-    const can = await canUserManagePosts(auth.uid, post.schoolId, "publish");
+    const can = await canUserManagePosts(auth.uid, post.subcomisionId, "publish");
     if (!can) {
       return NextResponse.json({ error: "Solo admins pueden publicar" }, { status: 403 });
     }

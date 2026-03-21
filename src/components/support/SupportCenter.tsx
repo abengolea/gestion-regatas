@@ -36,7 +36,7 @@ export function SupportCenter() {
       if (!activeSchoolId || !user) {
         throw new Error('No hay escuela activa o usuario');
       }
-      const counterRef = doc(firestore, `schools/${activeSchoolId}/supportTicketCounter`, 'counter');
+      const counterRef = doc(firestore, `subcomisiones/${activeSchoolId}/supportTicketCounter`, 'counter');
       const ticketsColl = collection(firestore, `schools/${activeSchoolId}/supportTickets`);
       const ticketRef = doc(ticketsColl);
       const ticketId = ticketRef.id;
@@ -46,7 +46,7 @@ export function SupportCenter() {
 
       // Firestore no acepta undefined: armar objeto solo con campos definidos
       const firestoreData: Record<string, unknown> = {
-        schoolId: activeSchoolId,
+        subcomisionId: activeSchoolId,
         userId: payload.userId,
         category: payload.category,
         severity: payload.severity,
@@ -175,7 +175,7 @@ export function SupportCenter() {
               <SupportBot
                 key={flowKey}
                 flow={selectedFlow}
-                schoolId={activeSchoolId}
+                subcomisionId={activeSchoolId}
                 userId={user!.uid}
                 userEmail={user!.email ?? undefined}
                 userDisplayName={profile.displayName}
@@ -191,7 +191,7 @@ export function SupportCenter() {
           )}
         </TabsContent>
         <TabsContent value="tickets" className="mt-4">
-          <TicketStatus schoolId={activeSchoolId} userId={user!.uid} />
+          <TicketStatus subcomisionId={activeSchoolId} userId={user!.uid} />
         </TabsContent>
       </Tabs>
     </div>

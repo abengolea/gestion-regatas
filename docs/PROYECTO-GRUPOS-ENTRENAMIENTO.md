@@ -61,11 +61,11 @@ Cada escuela debe poder organizar sus **categorías** y **grupos de entrenamient
 
 - **Ubicación:** `/dashboard/attendance`
 - **Organización actual:** Por **edad** (Sub-5, Sub-6, Sub-7...) con `groupPlayersByAge()`
-- **Modelo de datos:** Un `Training` por fecha (date, dateStr). Asistencia en `trainings/{id}/attendance/{playerId}`
+- **Modelo de datos:** Un `Training` por fecha (date, dateStr). Asistencia en `trainings/{id}/attendance/{socioId}`
 
 ### 3.4 Gestión Escuela
 
-- **Ubicación:** `/dashboard/schools/[schoolId]`
+- **Ubicación:** `/dashboard/subcomisiones/[subcomisionId]`
 - **Contenido actual:** Tabs "Responsables" y "Jugadores"
 - **No incluye:** Configuración de categorías ni grupos de entrenamiento
 
@@ -85,7 +85,7 @@ Cada escuela debe poder organizar sus **categorías** y **grupos de entrenamient
 **Archivos afectados:**
 
 - `src/lib/utils.ts` (nuevas funciones / adaptación)
-- `src/components/players/PlayerTable.tsx`
+- `src/components/socios/PlayerTable.tsx`
 - `src/components/players/AddPlayerForm.tsx`, `EditPlayerDialog.tsx`
 - `src/components/admin/MassMessageForm.tsx`
 - `src/components/training/TrainingSchedulesPanel.tsx`

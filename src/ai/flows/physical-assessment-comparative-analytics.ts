@@ -31,7 +31,7 @@ const PlayerEvalDataSchema = z.object({
 
 const GenerateComparativeAnalysisInputSchema = z.object({
   playerName: z.string().describe('Nombre del jugador a analizar.'),
-  playerData: PlayerEvalDataSchema.describe('Datos de la evaluación más reciente del jugador.'),
+  socioData: PlayerEvalDataSchema.describe('Datos de la evaluación más reciente del jugador.'),
   comparisonData: PlayerEvalDataSchema.describe('Datos de la evaluación con la que se debe comparar (ej. promedio de la categoría).'),
   comparisonContext: z.string().describe('Contexto de los datos de comparación (ej. "el promedio de su categoría", "un jugador de élite", etc.).')
 });
@@ -112,9 +112,9 @@ const analysisFlow = ai.defineFlow(
   async (input) => {
     const promptInput = {
       ...input,
-      playerDataPhysicalJson: JSON.stringify(input.playerData?.physical ?? {}),
-      playerDataTechnicalJson: JSON.stringify(input.playerData?.technical ?? {}),
-      playerDataTacticalJson: JSON.stringify(input.playerData?.tactical ?? {}),
+      playerDataPhysicalJson: JSON.stringify(input.socioData?.physical ?? {}),
+      playerDataTechnicalJson: JSON.stringify(input.socioData?.technical ?? {}),
+      playerDataTacticalJson: JSON.stringify(input.socioData?.tactical ?? {}),
       comparisonDataPhysicalJson: JSON.stringify(input.comparisonData?.physical ?? {}),
       comparisonDataTechnicalJson: JSON.stringify(input.comparisonData?.technical ?? {}),
       comparisonDataTacticalJson: JSON.stringify(input.comparisonData?.tactical ?? {}),

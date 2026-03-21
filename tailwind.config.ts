@@ -10,11 +10,22 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Oswald', 'sans-serif'],
+        body: ['Barlow', 'Source Sans 3', 'system-ui', 'sans-serif'],
+        headline: ['Barlow Condensed', 'system-ui', 'sans-serif'],
+        subhead: ['Barlow Semi Condensed', 'Barlow', 'system-ui', 'sans-serif'],
         code: ['Source Code Pro', 'monospace'],
       },
       colors: {
+        crsn: {
+          navy: 'hsl(var(--crsn-navy))',
+          'navy-light': 'hsl(var(--crsn-navy-light))',
+          'navy-dark': 'hsl(var(--crsn-navy-dark))',
+          orange: 'hsl(var(--crsn-orange))',
+          'orange-hover': 'hsl(var(--crsn-orange-hover))',
+          white: 'hsl(var(--crsn-white))',
+          'gray-bg': 'hsl(var(--crsn-gray-bg))',
+          'text-dark': 'hsl(var(--crsn-text-dark))',
+        },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
@@ -92,6 +103,10 @@ export default {
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+      },
+      letterSpacing: {
+        'crsn-eyebrow': '0.15em',
+        'crsn-meta': '0.08em',
       },
     },
   },

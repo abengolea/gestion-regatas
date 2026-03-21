@@ -2,13 +2,13 @@
 
 ## Core Features:
 
-- Player Management: Add, modify, and archive player profiles with personal and sports-related data, including document uploads to Firebase Storage.
+- Socio Management: Add, modify, and archive player profiles with personal and sports-related data, including document uploads to Firebase Storage.
 - Activity Logging: Record training sessions and matches on a calendar, track attendance, playing time, and Rate of Perceived Exertion (RPE).
 - Physical Assessments: Log physical test results, like sprint times and vertical jump, and visualize progress over time. Generative AI tool for comparative analytics on each player's trend data in each physical test over time, measured against club medians.
-- Technical/Tactical Evaluations: Evaluate players using configurable rubrics, with scores and textual observations for technical and tactical skills.
+- Technical/Tactical Evaluations: Evaluate socios using configurable rubrics, with scores and textual observations for technical and tactical skills.
 - Medical Management: Record and track injuries, treatments, and return-to-play protocols with restricted access for medical staff.
-- Individual Objectives: Set SMART goals for players and track progress, with auditable coach-tutor comments.
-- Reporting & Analytics: Generate individual PDF reports and coach dashboards, and export datasets to Excel.
+- Individual Objectives: Set SMART goals for players and track progress, with auditable encargado_deportivo-tutor comments.
+- Reporting & Analytics: Generate individual PDF reports and encargado_deportivo dashboards, and export datasets to Excel.
 
 ## Style Guidelines:
 

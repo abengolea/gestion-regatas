@@ -34,11 +34,11 @@ function VerificarContent() {
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [attemptData, setAttemptData] = useState<{
     email: string;
-    playerData: {
+    socioData: {
       firstName: string;
       lastName: string;
       birthDate: { toDate: () => Date };
-      schoolId: string;
+      subcomisionId: string;
       tutorPhone: string;
     };
   } | null>(null);
@@ -98,15 +98,19 @@ function VerificarContent() {
         const result = await signInWithEmailLink(auth, emailToUse, fullUrl);
         window.localStorage.removeItem("emailForSignIn");
 
-        const birthDate = data.playerData?.birthDate;
+        const pd = data.playerData ?? data.socioData;
+        const birthDate = pd?.birthDate;
         setAttemptData({
           email,
-          playerData: {
-            ...data.playerData,
+          socioData: {
+            firstName: (pd?.firstName ?? pd?.nombre ?? "") as string,
+            lastName: (pd?.lastName ?? pd?.apellido ?? "") as string,
             birthDate:
               typeof birthDate?.toDate === "function"
                 ? birthDate
-                : { toDate: () => new Date(birthDate) },
+                : { toDate: () => new Date(birthDate ?? "") },
+            subcomisionId: (pd?.subcomisionId ?? pd?.schoolId ?? "") as string,
+            tutorPhone: (pd?.tutorPhone ?? pd?.tutorContact?.phone ?? "") as string,
           },
         });
 
@@ -164,10 +168,10 @@ function VerificarContent() {
     try {
       const pendingRef = collection(
         firestore,
-        `schools/${attemptData.playerData.schoolId}/pendingPlayers`
+        `subcomisiones/${attemptData.socioData.subcomisionId}/pendingSocios`
       );
 
-      const birthDate = attemptData.playerData.birthDate;
+      const birthDate = attemptData.socioData.birthDate;
       const birthDateVal =
         typeof birthDate === "object" && birthDate !== null && "toDate" in birthDate
           ? (birthDate as { toDate: () => Date }).toDate()
@@ -175,20 +179,20 @@ function VerificarContent() {
 
       const emailNorm = attemptData.email.toLowerCase();
       await addDoc(pendingRef, {
-        firstName: attemptData.playerData.firstName,
-        lastName: attemptData.playerData.lastName,
+        firstName: attemptData.socioData.firstName,
+        lastName: attemptData.socioData.lastName,
         birthDate: Timestamp.fromDate(birthDateVal),
         email: emailNorm,
         tutorContact: {
           name: "Responsable",
-          phone: attemptData.playerData.tutorPhone || "",
+          phone: attemptData.socioData.tutorPhone || "",
         },
         submittedAt: Timestamp.now(),
         submittedBy: user.uid,
       });
 
-      await setDoc(doc(firestore, "pendingPlayerByEmail", emailNorm), {
-        schoolId: attemptData.playerData.schoolId,
+      await setDoc(doc(firestore, "pendingSocioByEmail", emailNorm), {
+        subcomisionId: attemptData.socioData.subcomisionId,
         createdAt: Timestamp.now(),
       });
 

@@ -28,7 +28,7 @@ export function buildEmailHtmlServer(
   contentHtml: string,
   options?: { title?: string; greeting?: string }
 ): string {
-  const title = options?.title ?? "Escuelas River";
+  const title = options?.title ?? "Regatas+";
   const greeting = options?.greeting ?? "";
 
   const headerContent = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">

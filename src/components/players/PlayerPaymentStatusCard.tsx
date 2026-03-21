@@ -24,7 +24,7 @@ function formatPeriodLabel(period: string): string {
 
 interface PlayerPaymentStatusCardProps {
   getToken: () => Promise<string | null>;
-  /** Cuando el admin ve el perfil: playerId y schoolId para consultar morosos. */
+  /** Cuando el admin ve el perfil: socioId y subcomisionId para consultar morosos. */
   playerId?: string;
   schoolId?: string;
 }

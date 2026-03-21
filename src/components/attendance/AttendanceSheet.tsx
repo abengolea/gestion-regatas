@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFirestore, useUserProfile } from "@/firebase";
 import { useCollection } from "@/firebase";
-import type { Player, TrainingSlot } from "@/lib/types";
+import type { Socio, TrainingSlot } from "@/lib/types";
 import type { Attendance } from "@/lib/types";
 import { getBirthYearLabel } from "@/lib/utils";
 import { getPlayersInSlot, getSlotKey } from "@/lib/training-slot-utils";
@@ -32,9 +32,9 @@ import { cn } from "@/lib/utils";
 
 const DAY_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
-function groupPlayersByBirthYear(players: Player[]): Record<number, Player[]> {
-  const byYear: Record<number, Player[]> = {};
-  for (const p of players) {
+function groupPlayersByBirthYear(socios: Socio[]): Record<number, Socio[]> {
+  const byYear: Record<number, Socio[]> = {};
+  for (const p of socios) {
     const year = p.birthDate
       ? (p.birthDate instanceof Date ? p.birthDate : new Date(p.birthDate)).getFullYear()
       : 0;
@@ -50,11 +50,13 @@ function groupPlayersByBirthYear(players: Player[]): Record<number, Player[]> {
 }
 
 type Props = {
-  schoolId: string;
+  subcomisionId: string;
+  schoolId?: string;
   getToken: () => Promise<string | null>;
 };
 
-export function AttendanceSheet({ schoolId, getToken }: Props) {
+export function AttendanceSheet({ subcomisionId: subcomisionIdProp, schoolId: schoolIdProp, getToken }: Props) {
+  const schoolId = subcomisionIdProp ?? schoolIdProp!;
   const firestore = useFirestore();
   const { user, isReady, isPlayer } = useUserProfile();
   const { toast } = useToast();
@@ -70,8 +72,8 @@ export function AttendanceSheet({ schoolId, getToken }: Props) {
   const [trainingConfig, setTrainingConfig] = useState<{ slots: TrainingSlot[] } | null>(null);
 
   const canListPlayers = isReady && schoolId && !isPlayer;
-  const { data: players, loading: playersLoading } = useCollection<Player>(
-    canListPlayers ? `schools/${schoolId}/players` : "",
+  const { data: players, loading: playersLoading } = useCollection<Socio>(
+    canListPlayers ? `subcomisiones/${schoolId}/socios` : "",
     { orderBy: ["lastName", "asc"] }
   );
 
@@ -171,16 +173,16 @@ export function AttendanceSheet({ schoolId, getToken }: Props) {
 
   const toggleStatus = (
     slotKey: string,
-    playerId: string
+    socioId: string
   ) => {
     setAttendanceBySlot((prev) => {
       const slotMap = prev[slotKey] ?? {};
-      const current = slotMap[playerId] ?? "presente";
+      const current = slotMap[socioId] ?? "presente";
       return {
         ...prev,
         [slotKey]: {
           ...slotMap,
-          [playerId]: current === "ausente" ? "presente" : "ausente",
+          [socioId]: current === "ausente" ? "presente" : "ausente",
         },
       };
     });

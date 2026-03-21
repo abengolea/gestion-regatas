@@ -6,8 +6,8 @@ export type PostStatus = "draft" | "published" | "archived";
 
 export interface Post {
   id: string;
-  schoolId: string;
-  schoolSlug: string;
+  subcomisionId: string;
+  subcomisionSlug: string;
   schoolName: string;
   title: string;
   slug: string;

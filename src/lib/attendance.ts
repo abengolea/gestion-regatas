@@ -19,10 +19,10 @@ import { getSlotKey } from "./training-slot-utils";
 /** Obtiene el entrenamiento del día para una escuela (legacy: sin slotKey, uno solo por fecha) */
 export async function getTrainingByDate(
   firestore: Firestore,
-  schoolId: string,
+  subcomisionId: string,
   dateStr: string
 ): Promise<(Training & { id: string }) | null> {
-  const trainingsRef = collection(firestore, `schools/${schoolId}/trainings`);
+  const trainingsRef = collection(firestore, `subcomisiones/${subcomisionId}/trainings`);
   const q = query(trainingsRef, where("dateStr", "==", dateStr), limit(20));
   const snapshot = await getDocs(q);
   const legacy = snapshot.docs.find((d) => d.data().slotKey == null);
@@ -142,14 +142,14 @@ async function saveAttendanceForTrainingId(
   const trainingDate = new Date(date);
   trainingDate.setHours(0, 0, 0, 0);
 
-  for (const [playerId, status] of Object.entries(attendanceMap)) {
+  for (const [socioId, status] of Object.entries(attendanceMap)) {
     const attRef = doc(
       firestore,
-      `schools/${schoolId}/trainings/${trainingId}/attendance/${playerId}`
+      `schools/${schoolId}/trainings/${trainingId}/attendance/${socioId}`
     );
     batch.set(attRef, {
       status,
-      playerId,
+      playerId: socioId, // compat Firestore
       trainingId,
       trainingDate: Timestamp.fromDate(trainingDate),
     });

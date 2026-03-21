@@ -1,5 +1,5 @@
 /**
- * GET /api/posts/check-slug?schoolId=&slug=&excludePostId=
+ * GET /api/posts/check-slug?subcomisionId=&slug=&excludePostId=
  */
 
 import { NextResponse } from "next/server";

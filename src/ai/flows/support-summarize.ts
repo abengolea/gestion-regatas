@@ -21,7 +21,7 @@ const SupportSummarizeOutputSchema = z.object({
   ]).describe('Categoría más adecuada.'),
   severity: z.enum(['low', 'medium', 'high', 'critical']).describe('Severidad del problema.'),
   suggestedTags: z.array(z.string()).describe('Etiquetas sugeridas para el ticket (ej. login, video, report).'),
-  missingFields: z.array(z.string()).describe('Campos que faltarían para el ticket: playerId, device, reproSteps, etc.'),
+  missingFields: z.array(z.string()).describe('Campos que faltarían para el ticket: socioId, device, reproSteps, etc.'),
 });
 
 export type SupportSummarizeInput = z.infer<typeof SupportSummarizeInputSchema>;

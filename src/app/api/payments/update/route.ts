@@ -25,20 +25,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const { paymentId, schoolId, newPeriod } = parsed.data;
+    const schoolId = parsed.data.schoolId ?? (parsed.data as { subcomisionId?: string }).subcomisionId;
+    const { paymentId, newPeriod } = parsed.data;
     const db = getAdminFirestore();
 
-    // Solo admin de escuela o super admin puede editar pagos (NO coaches)
-    const schoolUserSnap = await db.doc(`schools/${schoolId}/users/${auth.uid}`).get();
+    // Solo admin de subcomisión o gerente del club puede editar pagos (NO encargado_deportivo)
+    const schoolUserSnap = await db.doc(`subcomisiones/${schoolId}/users/${auth.uid}`).get();
     const platformUserSnap = await db.doc(`platformUsers/${auth.uid}`).get();
-    const isSchoolAdmin =
+    const platformData = platformUserSnap.data() as { gerente_club?: boolean; super_admin?: boolean } | undefined;
+    const isSubcomisionAdmin =
       schoolUserSnap.exists &&
-      (schoolUserSnap.data() as { role?: string })?.role === 'school_admin';
+      (schoolUserSnap.data() as { role?: string })?.role === 'admin_subcomision';
     const isSuperAdmin =
-      platformUserSnap.exists &&
-      (platformUserSnap.data() as { super_admin?: boolean })?.super_admin === true;
+      (platformData?.gerente_club ?? platformData?.super_admin) === true || auth.email === 'abengolea1@gmail.com';
 
-    if (!isSchoolAdmin && !isSuperAdmin) {
+    if (!isSubcomisionAdmin && !isSuperAdmin) {
       return NextResponse.json(
         { error: 'Solo el administrador de la escuela puede editar pagos' },
         { status: 403 }
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     if (!payment) {
       return NextResponse.json({ error: 'Pago no encontrado' }, { status: 404 });
     }
-    if (payment.schoolId !== schoolId) {
+    if (payment.subcomisionId !== schoolId && payment.schoolId !== schoolId) {
       return NextResponse.json({ error: 'El pago no pertenece a esta escuela' }, { status: 400 });
     }
 

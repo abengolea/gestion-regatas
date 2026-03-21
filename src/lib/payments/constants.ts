@@ -4,13 +4,13 @@ export const COLLECTIONS = {
   payments: 'payments',
   paymentIntents: 'paymentIntents',
   emailEvents: 'emailEvents',
-  schoolFeePayments: 'schoolFeePayments',
+  clubFeePayments: 'clubFeePayments',
 } as const;
 
 /** Documento de config global de mensualidades: platformConfig/platformFeeConfig */
 export const PLATFORM_FEE_CONFIG_DOC = 'platformFeeConfig';
 
-/** Documento de config de mensualidad por escuela: schools/{schoolId}/schoolFeeConfig/default */
+/** Documento de config de mensualidad por escuela: subcomisiones/{subcomisionId}/clubFeeConfig/default */
 export const SCHOOL_FEE_CONFIG_DOC = 'default';
 
 /** Documento de conexión MP por escuela: schools/{schoolId}/mercadopagoConnection/default */

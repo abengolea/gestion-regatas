@@ -30,7 +30,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const { provider, playerId, schoolId, period, currency } = parsed.data;
+    const { provider, socioId, subcomisionId, period, currency } = parsed.data;
+    const schoolId = subcomisionId;
+    const playerId = socioId;
     const db = getAdminFirestore();
 
     const config = await getOrCreatePaymentConfig(db, schoolId);
@@ -70,12 +72,12 @@ export async function POST(request: Request) {
 
     const { checkoutUrl, providerPreferenceId } = await createPaymentIntentWithProvider(
       provider,
-      { playerId, schoolId, period, amount, currency, mercadopagoAccessToken }
+      { socioId, subcomisionId, period, amount, currency, mercadopagoAccessToken }
     );
 
     const intent = await createPaymentIntent(db, {
-      playerId,
-      schoolId,
+      playerId: socioId,
+      schoolId: subcomisionId,
       period,
       amount,
       currency,

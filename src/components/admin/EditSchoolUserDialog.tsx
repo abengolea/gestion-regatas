@@ -35,20 +35,22 @@ import { Loader2 } from "lucide-react";
 import { useFirestore, useUserProfile } from "@/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import type { SchoolUser } from "@/lib/types";
+import type { SubcomisionUser } from "@/lib/types";
 
 const editUserSchema = z.object({
   displayName: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
-  role: z.enum(["school_admin", "coach", "editor", "viewer", "player"], { required_error: "El rol es requerido."}),
+  role: z.enum(["admin_subcomision", "encargado_deportivo", "editor", "viewer", "player"], { required_error: "El rol es requerido."}),
 });
 
-interface EditSchoolUserDialogProps {
-    schoolId: string;
-    user: SchoolUser;
+interface EditSubcomisionUserDialogProps {
+    subcomisionId?: string;
+    schoolId?: string;
+    user: SubcomisionUser;
     children: React.ReactNode;
 }
 
-export function EditSchoolUserDialog({ schoolId, user, children }: EditSchoolUserDialogProps) {
+export function EditSubcomisionUserDialog({ subcomisionId: subcomisionIdProp, schoolId, user, children }: EditSubcomisionUserDialogProps) {
+  const subcomisionId = subcomisionIdProp ?? schoolId;
   const [open, setOpen] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -65,7 +67,7 @@ export function EditSchoolUserDialog({ schoolId, user, children }: EditSchoolUse
   const { isSubmitting } = form.formState;
 
   async function onSubmit(values: z.infer<typeof editUserSchema>) {
-    const userRef = doc(firestore, `schools/${schoolId}/users`, user.id);
+    const userRef = doc(firestore, `subcomisiones/${subcomisionId}/users`, user.id);
     
     try {
       await updateDoc(userRef, {
@@ -139,8 +141,8 @@ export function EditSchoolUserDialog({ schoolId, user, children }: EditSchoolUse
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="school_admin">Administrador de Escuela</SelectItem>
-                      <SelectItem value="coach">Entrenador</SelectItem>
+                      <SelectItem value="admin_subcomision">Administrador</SelectItem>
+                      <SelectItem value="encargado_deportivo">Entrenador</SelectItem>
                       <SelectItem value="editor">Editor</SelectItem>
                       <SelectItem value="viewer">Visor</SelectItem>
                       <SelectItem value="player">Jugador</SelectItem>

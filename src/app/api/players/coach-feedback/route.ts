@@ -1,5 +1,5 @@
 /**
- * POST /api/players/coach-feedback
+ * POST /api/socios/encargado_deportivo-feedback
  * Actualiza solo la devolución del entrenador (coachFeedback) del jugador.
  * Solo administrador o entrenador de la escuela.
  */
@@ -16,11 +16,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { schoolId, playerId, coachFeedback } = body as {
-      schoolId?: string;
-      playerId?: string;
-      coachFeedback?: string;
-    };
+    const b = body as { schoolId?: string; subcomisionId?: string; playerId?: string; socioId?: string; coachFeedback?: string };
+    const schoolId = b.subcomisionId ?? b.schoolId;
+    const playerId = b.socioId ?? b.playerId;
+    const { coachFeedback } = b;
     if (!schoolId || !playerId) {
       return NextResponse.json(
         { error: "Faltan schoolId o playerId" },
@@ -32,17 +31,21 @@ export async function POST(request: Request) {
     const uid = auth.uid;
 
     const schoolUserSnap = await db
-      .doc(`schools/${schoolId}/users/${uid}`)
+      .collection('subcomisiones')
+      .doc(schoolId)
+      .collection('users')
+      .doc(uid)
       .get();
     const userInSchool =
       schoolUserSnap.exists &&
-      ["school_admin", "coach"].includes(
+      ["admin_subcomision", "encargado_deportivo"].includes(
         (schoolUserSnap.data() as { role?: string })?.role ?? ""
       );
     const platformUserSnap = await db.doc(`platformUsers/${uid}`).get();
+    const platformData = platformUserSnap.data() as { gerente_club?: boolean; super_admin?: boolean } | undefined;
     const isSuperAdmin =
       platformUserSnap.exists &&
-      (platformUserSnap.data() as { super_admin?: boolean })?.super_admin === true;
+      (platformData?.gerente_club ?? platformData?.super_admin) === true;
 
     if (!userInSchool && !isSuperAdmin) {
       return NextResponse.json(
@@ -51,7 +54,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const playerRef = db.doc(`schools/${schoolId}/players/${playerId}`);
+    const playerRef = db.collection('subcomisiones').doc(schoolId).collection('socios').doc(playerId);
     const playerSnap = await playerRef.get();
     if (!playerSnap.exists) {
       return NextResponse.json(
@@ -66,7 +69,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error("[players/coach-feedback POST]", e);
+    console.error("[players/encargado_deportivo-feedback POST]", e);
     return NextResponse.json(
       { error: "Error al actualizar la devolución", detail: message },
       { status: 500 }

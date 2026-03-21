@@ -1,7 +1,7 @@
 "use client";
 
 import { useCollection } from "@/firebase";
-import type { PlayerVideo } from "@/lib/types";
+import type { SocioVideo } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,8 +34,12 @@ import { useFirestore } from "@/firebase/provider";
 import { useToast } from "@/hooks/use-toast";
 
 interface PlayerVideotecaProps {
-  schoolId: string;
-  playerId: string;
+  subcomisionId?: string;
+  socioId?: string;
+  /** @deprecated Use subcomisionId */
+  schoolId?: string;
+  /** @deprecated Use socioId */
+  playerId?: string;
   playerName: string;
   /** Si viene desde la página del jugador, no mostrar selector de jugador en el diálogo */
   embedded?: boolean;
@@ -44,23 +48,27 @@ interface PlayerVideotecaProps {
 }
 
 export function PlayerVideoteca({
+  subcomisionId: subcomisionIdProp,
+  socioId: socioIdProp,
   schoolId,
   playerId,
   playerName,
   embedded = true,
   isViewingAsPlayer = false,
 }: PlayerVideotecaProps) {
+  const subcomisionId = subcomisionIdProp ?? schoolId;
+  const socioId = socioIdProp ?? playerId;
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [videoToDelete, setVideoToDelete] = useState<PlayerVideo | null>(null);
+  const [videoToDelete, setVideoToDelete] = useState<SocioVideo | null>(null);
   const [filterSkill, setFilterSkill] = useState<string | "all">("all");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const { data: videos, loading, error } = useCollection<PlayerVideo>(
-    schoolId ? `schools/${schoolId}/playerVideos` : "",
+  const { data: videos, loading, error } = useCollection<SocioVideo>(
+    subcomisionId ? `subcomisiones/${subcomisionId}/socioVideos` : "",
     {
-      where: ["playerId", "==", playerId],
+      where: ["playerId", "==", socioId], // playerId en Firestore por compat
       orderBy: ["createdAt", "desc"],
       limit: 50,
     }
@@ -81,10 +89,10 @@ export function PlayerVideoteca({
   }, [videos, filterSkill, sortOrder]);
 
   const handleDelete = async () => {
-    if (!videoToDelete || !schoolId) return;
+    if (!videoToDelete || !subcomisionId) return;
     try {
       await deleteDoc(
-        doc(firestore, `schools/${schoolId}/playerVideos/${videoToDelete.id}`)
+        doc(firestore, `subcomisiones/${subcomisionId}/socioVideos/${videoToDelete.id}`)
       );
       toast({ title: "Video eliminado", description: "Se eliminó de la videoteca." });
       setVideoToDelete(null);
@@ -269,8 +277,8 @@ export function PlayerVideoteca({
       <RecordOrUploadVideoDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        schoolId={schoolId}
-        initialPlayerId={playerId}
+        subcomisionId={subcomisionId}
+        initialSocioId={socioId}
         initialPlayerName={playerName}
         embedded={embedded}
         onSuccess={() => setDialogOpen(false)}

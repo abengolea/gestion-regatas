@@ -23,7 +23,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { MoreHorizontal, Loader2, Shield, ShieldOff, Building2 } from "lucide-react";
 import { useCollection, useFirestore, useUserProfile } from "@/firebase";
 import { doc, updateDoc, collectionGroup, getDocs, collection } from "firebase/firestore";
-import type { PlatformUser, School, SchoolUser } from "@/lib/types";
+import type { PlatformUser, Subcomision, SubcomisionUser } from "@/lib/types";
 import { writeAuditLog } from "@/lib/audit";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -47,17 +47,17 @@ type UserAction = {
 }
 
 type UserRoleInfo = {
-    role: 'school_admin' | 'coach' | 'editor' | 'viewer' | 'player';
+    role: 'admin_subcomision' | 'encargado_deportivo' | 'editor' | 'viewer' | 'player';
     displayName?: string;
-    schoolId: string;
-    playerId?: string;
+    subcomisionId: string;
+    socioId?: string;
 };
 
 type PlatformUsersListProps = {
-    schools?: School[] | null;
+    subcomisiones?: Subcomision[] | null;
 };
 
-export function PlatformUsersList({ schools = [] }: PlatformUsersListProps) {
+export function PlatformUsersList({ subcomisiones = [] }: PlatformUsersListProps) {
     const { data: platformUsers, loading: usersLoading } = useCollection<PlatformUser>('platformUsers', { orderBy: ['createdAt', 'desc'] });
     const { user: currentUser } = useUserProfile();
     const firestore = useFirestore();
@@ -67,11 +67,11 @@ export function PlatformUsersList({ schools = [] }: PlatformUsersListProps) {
     const [isUpdating, setIsUpdating] = useState(false);
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>("all");
 
-    // Cuando hay un filtro por escuela, cargamos los usuarios de esa escuela (staff: admin, coach) con role y displayName
-    const schoolUsersPath = selectedSchoolId && selectedSchoolId !== "all" ? `schools/${selectedSchoolId}/users` : "";
-    const { data: schoolUsers } = useCollection<SchoolUser & { id: string }>(schoolUsersPath);
+    // Cuando hay un filtro por escuela, cargamos los usuarios de esa escuela (staff: admin, encargado_deportivo) con role y displayName
+    const schoolUsersPath = selectedSchoolId && selectedSchoolId !== "all" ? `subcomisiones/${selectedSchoolId}/users` : "";
+    const { data: schoolUsers } = useCollection<SubcomisionUser & { id: string }>(schoolUsersPath);
 
-    // Para vista "Todas las escuelas": cargar roles desde collectionGroup + playerLogins
+    // Para vista "Todas las escuelas": cargar roles desde collectionGroup + socioLogins
     const [allRolesMap, setAllRolesMap] = useState<Map<string, UserRoleInfo>>(new Map());
     const [playerMap, setPlayerMap] = useState<Map<string, { schoolId: string; playerId: string }>>(new Map());
 
@@ -88,12 +88,12 @@ export function PlatformUsersList({ schools = [] }: PlatformUsersListProps) {
                 usersSnap.docs.forEach((d) => {
                     const schoolId = d.ref.parent.parent?.id;
                     if (!schoolId) return;
-                    const data = d.data() as SchoolUser;
+                    const data = d.data() as SubcomisionUser;
                     rolesMap.set(d.id, {
                         role: data.role,
                         displayName: data.displayName,
-                        schoolId,
-                        playerId: (data as { playerId?: string }).playerId,
+                        subcomisionId: schoolId,
+                        socioId: (data as { socioId?: string }).socioId,
                     });
                 });
                 loginsSnap.docs.forEach((d) => {
@@ -117,7 +117,7 @@ export function PlatformUsersList({ schools = [] }: PlatformUsersListProps) {
             m.set(u.id, {
                 role: u.role,
                 displayName: u.displayName,
-                schoolId: selectedSchoolId,
+                subcomisionId: selectedSchoolId,
             });
         });
         return m;
@@ -129,7 +129,7 @@ export function PlatformUsersList({ schools = [] }: PlatformUsersListProps) {
         if (!schoolUsers) return [];
         const schoolUserIds = new Set(schoolUsers.map((u) => u.id));
         return platformUsers.filter(
-            (u) => schoolUserIds.has(u.id) || u.super_admin
+            (u) => schoolUserIds.has(u.id) || u.gerente_club
         );
     }, [platformUsers, selectedSchoolId, schoolUsers]);
 
@@ -152,7 +152,7 @@ export function PlatformUsersList({ schools = [] }: PlatformUsersListProps) {
             }
             toast({
                 title: "Rol actualizado",
-                description: `${user.email} ha sido ${newStatus ? 'promovido a' : 'revocado como'} Super Admin.`,
+                description: `${user.email} ha sido ${newStatus ? 'promovido a' : 'revocado como'} Gerente del Club.`,
             });
         } catch (error) {
              toast({
@@ -179,7 +179,7 @@ export function PlatformUsersList({ schools = [] }: PlatformUsersListProps) {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Todas las escuelas</SelectItem>
-                        {schools?.map((school) => (
+                        {subcomisiones?.map((school: Subcomision) => (
                             <SelectItem key={school.id} value={school.id}>
                                 {school.name}
                             </SelectItem>
@@ -209,15 +209,15 @@ export function PlatformUsersList({ schools = [] }: PlatformUsersListProps) {
                     {filteredUsers?.map((user) => {
                         const info = roleMap.get(user.id);
                         const href = info
-                          ? info.playerId
-                            ? `/dashboard/players/${info.playerId}?schoolId=${info.schoolId}`
-                            : `/dashboard/schools/${info.schoolId}`
+                          ? info.socioId
+                            ? `/dashboard/players/${info.socioId}?subcomisionId=${info.subcomisionId}`
+                            : `/dashboard/schools/${info.subcomisionId}`
                           : null;
                         const displayName = info?.displayName ?? user.email;
                         const roleLabel =
-                          info?.role === "school_admin"
+                          info?.role === "admin_subcomision"
                             ? "Admin"
-                            : info?.role === "coach"
+                            : info?.role === "encargado_deportivo"
                               ? "Entrenador"
                               : info?.role === "player"
                                 ? "Jugador"

@@ -1,7 +1,7 @@
 /**
  * GET /api/payments/me
  * Devuelve los pagos y estado de morosidad del jugador autenticado.
- * Solo disponible para usuarios con rol player (vinculados vía playerLogins).
+ * Solo disponible para usuarios con rol player (vinculados vía socioLogins).
  */
 
 import { NextResponse } from 'next/server';
@@ -26,12 +26,16 @@ export async function GET(request: Request) {
 
     const emailNorm = user.email.trim().toLowerCase();
     const db = getAdminFirestore();
-    const loginSnap = await db.collection('playerLogins').doc(emailNorm).get();
+    let loginSnap = await db.collection('socioLogins').doc(emailNorm).get();
     if (!loginSnap.exists) {
-      return NextResponse.json({ error: 'No eres un jugador registrado' }, { status: 403 });
+      loginSnap = await db.collection('playerLogins').doc(emailNorm).get();
+      if (!loginSnap.exists) {
+        return NextResponse.json({ error: 'No eres un socio registrado' }, { status: 403 });
+      }
     }
-
-    const { schoolId, playerId } = loginSnap.data() as { schoolId: string; playerId: string };
+    const loginData = loginSnap.data() as { schoolId?: string; playerId?: string; subcomisionId?: string; socioId?: string };
+    const schoolId = loginData?.subcomisionId ?? loginData?.schoolId;
+    const playerId = loginData?.socioId ?? loginData?.playerId;
     if (!schoolId || !playerId) {
       return NextResponse.json({ error: 'Datos de jugador incompletos' }, { status: 403 });
     }

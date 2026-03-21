@@ -2,13 +2,13 @@
  * GET/POST /api/payments/webhook/mercadopago-platform
  * Recibe notificaciones de Mercado Pago para pagos de mensualidad de escuelas a la plataforma.
  * Usa MERCADOPAGO_PLATFORM_ACCESS_TOKEN para consultar el pago.
- * external_reference: platform_fee|schoolId|period
+ * external_reference: platform_fee|subcomisionId|period
  */
 
 import { NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import {
-  findSchoolFeePaymentByProviderId,
+  findClubFeePaymentByProviderId,
   createSchoolFeePayment,
   findApprovedSchoolFeePayment,
 } from '@/lib/payments/platform-fee';

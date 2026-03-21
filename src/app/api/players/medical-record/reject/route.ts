@@ -1,5 +1,5 @@
 /**
- * POST /api/players/medical-record/reject
+ * POST /api/socios/medical-record/reject
  * Marca la ficha médica como incumplida (rejectedAt, rejectedBy, rejectionReason).
  * Solo administrador o entrenador de la escuela.
  */
@@ -17,11 +17,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { schoolId, playerId, rejectionReason } = body as {
-      schoolId?: string;
-      playerId?: string;
-      rejectionReason?: string;
-    };
+    const b = body as { schoolId?: string; subcomisionId?: string; playerId?: string; socioId?: string; rejectionReason?: string };
+    const schoolId = b.subcomisionId ?? b.schoolId;
+    const playerId = b.socioId ?? b.playerId;
+    const { rejectionReason } = b;
     if (!schoolId || !playerId) {
       return NextResponse.json(
         { error: "Faltan schoolId o playerId" },
@@ -39,15 +38,16 @@ export async function POST(request: Request) {
     const db = getAdminFirestore();
     const uid = auth.uid;
 
-    const schoolUserSnap = await db.doc(`schools/${schoolId}/users/${uid}`).get();
+    const schoolUserSnap = await db.collection('subcomisiones').doc(schoolId).collection('users').doc(uid).get();
     const schoolUserData = schoolUserSnap.data() as { role?: string } | undefined;
     const isStaff =
       schoolUserSnap.exists &&
-      (schoolUserData?.role === "school_admin" || schoolUserData?.role === "coach");
+      (schoolUserData?.role === "admin_subcomision" || schoolUserData?.role === "encargado_deportivo");
     const platformSnap = await db.doc(`platformUsers/${uid}`).get();
+    const platformData = platformSnap.data() as { gerente_club?: boolean; super_admin?: boolean } | undefined;
     const isSuperAdmin =
       platformSnap.exists &&
-      (platformSnap.data() as { super_admin?: boolean })?.super_admin === true;
+      (platformData?.gerente_club ?? platformData?.super_admin) === true;
 
     if (!isStaff && !isSuperAdmin) {
       return NextResponse.json(
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const playerRef = db.doc(`schools/${schoolId}/players/${playerId}`);
+    const playerRef = db.collection('subcomisiones').doc(schoolId).collection('socios').doc(playerId);
     const playerSnap = await playerRef.get();
     if (!playerSnap.exists) {
       return NextResponse.json({ error: "Jugador no encontrado" }, { status: 404 });

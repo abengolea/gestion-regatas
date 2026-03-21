@@ -76,16 +76,27 @@ function initFirebaseAdmin(): admin.firestore.Firestore {
   return admin.firestore();
 }
 
-/** Busca jugador por email sin usar índice (trae jugadores de cada escuela y filtra en memoria). */
+/** Busca socio por email sin usar índice (trae socios de cada subcomisión y filtra en memoria). */
 async function findPlayerByEmail(db: admin.firestore.Firestore, email: string): Promise<{ schoolId: string; playerId: string } | null> {
   const emailNorm = email.trim().toLowerCase();
   if (!emailNorm) return null;
 
+  const subcomisionesSnap = await db.collection('subcomisiones').get();
+  for (const schoolDoc of subcomisionesSnap.docs) {
+    const sociosSnap = await db.collection('subcomisiones').doc(schoolDoc.id).collection('socios').get();
+    const found = sociosSnap.docs.find(
+      (d: admin.firestore.QueryDocumentSnapshot) => ((d.data().email as string) ?? '').trim().toLowerCase() === emailNorm
+    );
+    if (found) {
+      return { schoolId: schoolDoc.id, playerId: found.id };
+    }
+  }
+  // Fallback: buscar en schools/players (legacy)
   const schoolsSnap = await db.collection('schools').get();
   for (const schoolDoc of schoolsSnap.docs) {
     const playersSnap = await db.collection('schools').doc(schoolDoc.id).collection('players').get();
     const found = playersSnap.docs.find(
-      (d) => ((d.data().email as string) ?? '').trim().toLowerCase() === emailNorm
+      (d: admin.firestore.QueryDocumentSnapshot) => ((d.data().email as string) ?? '').trim().toLowerCase() === emailNorm
     );
     if (found) {
       return { schoolId: schoolDoc.id, playerId: found.id };

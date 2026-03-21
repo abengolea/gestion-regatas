@@ -1,6 +1,6 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
-# Proyecto: Escuelas River (lexflow-consultas)
+# Proyecto: Regatas+ (lexflow-consultas)
 
 runConfig:
   maxInstances: 1

@@ -15,8 +15,8 @@ export interface CreateIntentResult {
 }
 
 export interface CreateIntentParams {
-  playerId: string;
-  schoolId: string;
+  socioId: string;
+  subcomisionId: string;
   period: string;
   amount: number;
   currency: string;
@@ -39,8 +39,8 @@ export async function createPaymentIntentWithProvider(
     const { init_point, preference_id } = await createMercadoPagoPreference(
       params.mercadopagoAccessToken,
       {
-        playerId: params.playerId,
-        schoolId: params.schoolId,
+        socioId: params.socioId,
+        subcomisionId: params.subcomisionId,
         period: params.period,
         amount: params.amount,
         currency: params.currency,

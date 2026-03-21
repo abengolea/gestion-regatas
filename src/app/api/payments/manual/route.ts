@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const { playerId, schoolId, period, amount, currency } = parsed.data;
     const db = getAdminFirestore();
 
-    // Regla: solo crear pago si el jugador existe en esta escuela (así el nombre siempre se resuelve)
+    // Regla: solo crear pago si el socio existe en esta subcomisión
     const playerExists = await playerExistsInSchool(db, schoolId, playerId);
     if (!playerExists) {
       return NextResponse.json(
@@ -54,10 +54,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Nombre del admin/coach que carga el pago (quien cobró) desde schools/{schoolId}/users
+    // Nombre del admin/encargado_deportivo que carga el pago (quien cobró) desde subcomisiones/{schoolId}/users
     let collectedByDisplayName = auth.email ?? 'Usuario';
     const schoolUserRef = db
-      .collection('schools')
+      .collection('subcomisiones')
       .doc(schoolId)
       .collection('users')
       .doc(auth.uid);
@@ -69,8 +69,8 @@ export async function POST(request: Request) {
 
     const now = new Date();
     const payment = await createPayment(db, {
-      playerId,
-      schoolId,
+      socioId: playerId,
+      subcomisionId: schoolId,
       period,
       amount,
       currency,
@@ -88,17 +88,17 @@ export async function POST(request: Request) {
     await updatePlayerStatus(db, schoolId, playerId, 'active');
 
     // Enviar email de recibo
-    const playerRef = db
-      .collection('schools')
+    const socioRef = db
+      .collection('subcomisiones')
       .doc(schoolId)
-      .collection('players')
+      .collection('socios')
       .doc(playerId);
-    const playerSnap = await playerRef.get();
-    const playerData = playerSnap.data();
-    const playerName = playerData
-      ? `${playerData.firstName ?? ''} ${playerData.lastName ?? ''}`.trim()
-      : 'Jugador';
-    const toEmail = playerData?.email;
+    const socioSnap = await socioRef.get();
+    const socioData = socioSnap.data();
+    const playerName = socioData
+      ? `${(socioData.firstName ?? socioData.nombre ?? '')} ${(socioData.lastName ?? socioData.apellido ?? '')}`.trim()
+      : 'Socio';
+    const toEmail = socioData?.email ?? (socioData as { email?: string })?.email;
     if (toEmail) {
       await sendEmailEvent({
         db: db as admin.firestore.Firestore,

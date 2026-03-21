@@ -55,7 +55,7 @@ export default function TrainingSchedulesPage() {
           </p>
         </div>
       </div>
-      <TrainingSchedulesPanel schoolId={profile.activeSchoolId} getToken={getToken} />
+      <TrainingSchedulesPanel subcomisionId={profile.activeSchoolId} getToken={getToken} />
     </div>
   );
 }

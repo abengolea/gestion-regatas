@@ -36,13 +36,13 @@ import {
 } from "lucide-react";
 import { useFirestore } from "@/firebase";
 import { collectionGroup, getDocs, query, limit } from "firebase/firestore";
-import type { School, PlatformUser, Player } from "@/lib/types";
+import type { Subcomision, PlatformUser, Socio } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-/** Jugador con schoolId extraído del path (collection group). */
-type PlayerWithSchoolId = Player & { schoolId: string };
+/** Jugador con subcomisionId extraído del path (collection group). */
+type PlayerWithSchoolId = Socio & { schoolId: string };
 
 function escapeCsvCell(value: unknown): string {
   if (value == null) return "";
@@ -77,22 +77,25 @@ function downloadCsv(
 }
 
 type SuperAdminReportsTabProps = {
-  schools: School[] | null;
+  subcomisiones?: Subcomision[] | null;
+  schools?: Subcomision[] | null;
   platformUsers: PlatformUser[] | null;
   schoolsLoading: boolean;
   usersLoading: boolean;
 };
 
 export function SuperAdminReportsTab({
+  subcomisiones: subcomisionesProp,
   schools,
   platformUsers,
   schoolsLoading,
   usersLoading,
 }: SuperAdminReportsTabProps) {
+  const subcomisiones = subcomisionesProp ?? schools ?? null;
   const router = useRouter();
   const firestore = useFirestore();
   const [allPlayers, setAllPlayers] = useState<PlayerWithSchoolId[]>([]);
-  const [playersLoading, setPlayersLoading] = useState(true);
+  const [sociosLoading, setPlayersLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,7 +137,7 @@ export function SuperAdminReportsTab({
 
   const playersBySchool = useMemo(() => {
     const map = new Map<string, { count: number; active: number }>();
-    (schools ?? []).forEach((s) => map.set(s.id, { count: 0, active: 0 }));
+    (subcomisiones ?? []).forEach((s) => map.set(s.id, { count: 0, active: 0 }));
     allPlayers.forEach((p) => {
       if (p.archived) return;
       const cur = map.get(p.schoolId) ?? { count: 0, active: 0 };
@@ -143,21 +146,21 @@ export function SuperAdminReportsTab({
       map.set(p.schoolId, cur);
     });
     return map;
-  }, [schools, allPlayers]);
+  }, [subcomisiones, allPlayers]);
 
   const totalPlayers = useMemo(
     () => allPlayers.filter((p) => !p.archived).length,
     [allPlayers]
   );
 
-  const isLoading = schoolsLoading || usersLoading || playersLoading;
+  const isLoading = schoolsLoading || usersLoading || sociosLoading;
 
   const handleExportSchools = () => {
-    if (!schools?.length) return;
+    if (!subcomisiones?.length) return;
     downloadCsv(
       `escuelas-${format(new Date(), "yyyy-MM-dd")}.csv`,
       ["Nombre", "Ciudad", "Provincia", "Dirección", "Estado", "Fecha creación"],
-      schools.map((s) => [
+      subcomisiones.map((s) => [
         s.name,
         s.city,
         s.province,
@@ -172,18 +175,18 @@ export function SuperAdminReportsTab({
     if (!platformUsers?.length) return;
     downloadCsv(
       `usuarios-plataforma-${format(new Date(), "yyyy-MM-dd")}.csv`,
-      ["Email", "Super Admin", "Fecha creación"],
+      ["Email", "Gerente del Club", "Fecha creación"],
       platformUsers.map((u) => [
         u.email,
-        u.super_admin ? "Sí" : "No",
+        u.gerente_club ? "Sí" : "No",
         (u as { createdAt?: Date | { toDate?: () => Date } }).createdAt ?? "",
       ])
     );
   };
 
   const handleExportPlayers = () => {
-    if (!allPlayers.length || !schools?.length) return;
-    const schoolNames = new Map(schools.map((s) => [s.id, s.name]));
+    if (!allPlayers.length || !subcomisiones?.length) return;
+    const schoolNames = new Map(subcomisiones.map((s: Subcomision) => [s.id, s.name]));
     downloadCsv(
       `jugadores-${format(new Date(), "yyyy-MM-dd")}.csv`,
       ["Escuela", "Nombre", "Apellido", "Estado", "Archivado", "Fecha creación"],
@@ -203,7 +206,7 @@ export function SuperAdminReportsTab({
     router.push(`/dashboard/schools/${schoolId}`);
   };
 
-  const schoolList = schools ?? [];
+  const schoolList = subcomisiones ?? [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -225,7 +228,7 @@ export function SuperAdminReportsTab({
                 <UserCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                {playersLoading ? (
+                {sociosLoading ? (
                   <Skeleton className="h-8 w-16" />
                 ) : (
                   <div className="text-2xl font-bold">{totalPlayers}</div>
@@ -341,7 +344,7 @@ export function SuperAdminReportsTab({
             variant="outline"
             size="sm"
             onClick={handleExportSchools}
-            disabled={!schools?.length}
+            disabled={!subcomisiones?.length}
           >
             Exportar escuelas
           </Button>

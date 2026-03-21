@@ -25,8 +25,10 @@ interface MedicalRecordFieldProps {
   onChange: (medicalRecord: MedicalRecord) => void;
   onApprove?: () => void;
   onReject?: () => void;
-  schoolId: string;
-  playerId: string;
+  schoolId?: string;
+  subcomisionId?: string;
+  playerId?: string;
+  socioId?: string;
   playerName?: string;
   /** Email del jugador para enviarle el mensaje automático cuando se rechaza. */
   playerEmail?: string | null;
@@ -41,13 +43,17 @@ export function MedicalRecordField({
   onChange,
   onApprove,
   onReject,
-  schoolId,
-  playerId,
+  schoolId: schoolIdProp,
+  subcomisionId: subcomisionIdProp,
+  playerId: playerIdProp,
+  socioId: socioIdProp,
   playerName = "",
   playerEmail,
   canApprove = false,
   disabled = false,
 }: MedicalRecordFieldProps) {
+  const schoolId = subcomisionIdProp ?? schoolIdProp ?? "";
+  const playerId = socioIdProp ?? playerIdProp ?? "";
   const storage = useStorage();
   const firestore = useFirestore();
   const { user } = useUser();
@@ -79,7 +85,7 @@ export function MedicalRecordField({
     setUploading(true);
     try {
       const { url, storagePath } = await uploadMedicalRecord(storage, schoolId, playerId, file);
-      const res = await fetch("/api/players/medical-record", {
+      const res = await fetch("/api/socios/medical-record", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -179,7 +185,7 @@ export function MedicalRecordField({
         const safeReason = escapeHtml(reason).replace(/\n/g, "<br>");
         const contentHtml = `<p>Hola,</p><p>Tu ficha médica no fue aprobada. Motivo:</p><p><strong>${safeReason}</strong></p><p>Por favor subí una nueva ficha médica corregida desde tu perfil en el panel.</p>`;
         const html = buildEmailHtml(contentHtml, {
-          title: "Escuelas River",
+          title: "Regatas+",
           baseUrl: typeof window !== "undefined" ? window.location.origin : "",
           greeting: "Mensaje de tu escuela:",
         });

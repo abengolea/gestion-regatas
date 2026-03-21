@@ -21,11 +21,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BIRTH_YEAR_ORDER, getCategoryLabelFromBirthYear } from "@/lib/utils";
 
 interface PaymentConfigTabProps {
-  schoolId: string;
+  subcomisionId: string;
   getToken: () => Promise<string | null>;
 }
 
-export function PaymentConfigTab({ schoolId, getToken }: PaymentConfigTabProps) {
+export function PaymentConfigTab({ subcomisionId, getToken }: PaymentConfigTabProps) {
+  const schoolId = subcomisionId;
   const [amount, setAmount] = useState("");
   const [amountFemenino, setAmountFemenino] = useState("");
   const [dueDayOfMonth, setDueDayOfMonth] = useState("10");

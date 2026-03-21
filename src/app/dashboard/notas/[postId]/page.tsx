@@ -17,7 +17,7 @@ export default function EditarNotaPage() {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const canEdit = profile?.role === "school_admin" || profile?.role === "coach" || profile?.role === "editor" || isSuperAdmin;
+  const canEdit = profile?.role === "admin_subcomision" || profile?.role === "encargado_deportivo" || profile?.role === "editor" || isSuperAdmin;
 
   useEffect(() => {
     if (!postId || !isReady || !app) return;

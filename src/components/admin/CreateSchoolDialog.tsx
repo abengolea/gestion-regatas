@@ -27,7 +27,7 @@ import { Loader2, PlusCircle, UserPlus } from "lucide-react";
 import { useFirestore, useUserProfile } from "@/firebase";
 import { collection, doc, writeBatch, Timestamp } from "firebase/firestore";
 import { writeAuditLog } from "@/lib/audit";
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser } from "firebase/auth";
 import { initializeApp, deleteApp } from "firebase/app";
 import { getFirebaseConfig } from "@/firebase/config";
 import { useToast } from "@/hooks/use-toast";
@@ -36,9 +36,6 @@ import { Separator } from "../ui/separator";
 const schoolSchema = z
   .object({
     name: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
-    city: z.string().min(2, "La ciudad es requerida."),
-    province: z.string().min(2, "La provincia es requerida."),
-    address: z.string().optional(),
     adminDisplayName: z.string().min(3, "El nombre del administrador es requerido."),
     adminEmail: z.string().email("El correo electrónico no es válido."),
     adminEmailConfirm: z.string().email("El correo electrónico no es válido."),
@@ -49,7 +46,7 @@ const schoolSchema = z
     path: ["adminEmailConfirm"],
   });
 
-export function CreateSchoolDialog() {
+export function CreateSubcomisionDialog() {
   const [open, setOpen] = useState(false);
   const firestore = useFirestore();
   const { user } = useUserProfile();
@@ -59,9 +56,6 @@ export function CreateSchoolDialog() {
     resolver: zodResolver(schoolSchema),
     defaultValues: {
       name: "",
-      city: "",
-      province: "",
-      address: "",
       adminDisplayName: "",
       adminEmail: "",
       adminEmailConfirm: "",
@@ -75,83 +69,104 @@ export function CreateSchoolDialog() {
     const tempAppName = `temp-user-creation-${Date.now()}`;
     const tempApp = initializeApp(getFirebaseConfig(), tempAppName);
     const tempAuth = getAuth(tempApp);
-    
+    let newUser: import("firebase/auth").User | null = null; // Para rollback si el batch falla
+
     try {
-      // 1. Create the user in the temporary, isolated auth instance
+      // 1. Crear el usuario en Auth primero (si falla, no escribimos nada en Firestore)
       const userCredential = await createUserWithEmailAndPassword(tempAuth, values.adminEmail, values.adminPassword);
-      const newUser = userCredential.user;
+      newUser = userCredential.user;
       await updateProfile(newUser, { displayName: values.adminDisplayName });
 
-      // 2. Now that user is created, commit all related docs to Firestore in a single batch.
+      // 2. Batch atómico: subcomisión + usuario + platformUser. Si falla, no se escribe NADA.
       const batch = writeBatch(firestore);
-
-      // Doc 1: The new school
-      const newSchoolRef = doc(collection(firestore, 'schools'));
+      const newSchoolRef = doc(collection(firestore, 'subcomisiones'));
       const schoolData = {
           name: values.name,
-          city: values.city,
-          province: values.province,
-          address: values.address,
+          city: "",
+          province: "",
+          address: "",
           status: 'active' as const,
           createdAt: Timestamp.now(),
       };
       batch.set(newSchoolRef, schoolData);
-      
-      // Doc 2: The user's role within that school
-      const schoolUserRef = doc(firestore, 'schools', newSchoolRef.id, 'users', newUser.uid);
+
+      const schoolUserRef = doc(firestore, 'subcomisiones', newSchoolRef.id, 'users', newUser.uid);
       const schoolUserData = {
           displayName: values.adminDisplayName,
           email: (values.adminEmail ?? '').trim().toLowerCase(),
-          role: 'school_admin' as const,
+          role: 'admin_subcomision' as const,
       };
       batch.set(schoolUserRef, schoolUserData);
 
-      // Doc 3: The user's global profile document
       const platformUserRef = doc(firestore, 'platformUsers', newUser.uid);
-       const platformUserData = {
+      const platformUserData = {
           email: (values.adminEmail ?? '').trim().toLowerCase(),
-          super_admin: false,
+          gerente_club: false,
           createdAt: Timestamp.now()
-       };
+      };
       batch.set(platformUserRef, platformUserData);
 
       await batch.commit();
 
+      // 3. Audit log (no bloquea: si falla, igual mostramos éxito)
       if (user?.uid && user?.email) {
-        await writeAuditLog(firestore, user.email, user.uid, {
-          action: "school.create",
-          resourceType: "school",
-          resourceId: newSchoolRef.id,
-          details: values.name,
-        });
+        try {
+          await writeAuditLog(firestore, user.email, user.uid, {
+            action: "school.create",
+            resourceType: "school",
+            resourceId: newSchoolRef.id,
+            details: values.name,
+          });
+        } catch {
+          // Ignorar fallo del audit log
+        }
       }
 
       toast({
           title: "¡Éxito!",
-          description: `Se creó la escuela "${values.name}" y se asignó a ${values.adminEmail} como administrador.`,
+          description: `Se creó la subcomisión "${values.name}" y se asignó a ${values.adminEmail} como responsable.`,
       });
       form.reset();
       setOpen(false);
 
     } catch (error: any) {
+      // Rollback: si creamos el usuario en Auth pero el batch falló, eliminarlo para no dejar huérfanos
+      if (newUser) {
+        try {
+          await deleteUser(newUser);
+        } catch {
+          // Si falla el delete, el usuario queda huérfano en Auth (mejor que subcomisión sin admin)
+        }
+      }
         let title = "Error";
         let description = "Ocurrió un error inesperado.";
-        if (error.code) { // Likely an Auth error
+        const code = error?.code ?? "";
+        const msg = error?.message ?? "";
+
+        if (code.startsWith("auth/")) {
             title = "Error de Autenticación";
-            if (error.code === 'auth/email-already-in-use') {
-                description = "El email del administrador ya está registrado. Si un intento anterior falló, elimina el usuario desde la consola de Firebase (Autenticación) y vuelve a intentarlo.";
-            } else if (error.code === 'auth/weak-password') {
-                description = "La contraseña proporcionada es demasiado débil (mínimo 6 caracteres).";
+            if (code === "auth/email-already-in-use") {
+                description = "El email del administrador ya está registrado. Usá otro email o eliminá el usuario desde Firebase Console → Autenticación.";
+            } else if (code === "auth/weak-password") {
+                description = "La contraseña es demasiado débil. Mínimo 6 caracteres.";
+            } else if (code === "auth/operation-not-allowed") {
+                description = "El proveedor Email/Password no está habilitado. En Firebase Console → Autenticación → Método de inicio de sesión → habilitá «Correo electrónico/contraseña».";
+            } else if (code === "auth/invalid-email") {
+                description = "El email ingresado no es válido.";
+            } else if (code === "auth/too-many-requests") {
+                description = "Demasiados intentos. Esperá unos minutos e intentá de nuevo.";
+            } else {
+                description = msg || "Revisá que Email/Password esté habilitado en Firebase Console.";
             }
         } else {
             title = "Error de Base de Datos";
-            description = "No se pudo crear la escuela o asignar el rol. Por favor, revisa tus permisos e inténtalo de nuevo."
+            description = msg || "No se pudo crear la subcomisión. Revisá permisos de Firestore.";
         }
         toast({
             variant: "destructive",
-            title: title,
-            description: description,
-            duration: 9000,
+            title,
+            description,
+            duration: 12000,
         });
     } finally {
         // 3. Clean up the temporary app regardless of success or failure
@@ -164,67 +179,28 @@ export function CreateSchoolDialog() {
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Crear Nueva Escuela
+          Crear Subcomisión
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Crear Nueva Escuela</DialogTitle>
+          <DialogTitle>Crear Subcomisión</DialogTitle>
           <DialogDescription>
-            Completa los datos para registrar una nueva sede y su administrador.
+            Registra una nueva subcomisión y su responsable.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-4">
             <div className="space-y-2">
-                <h3 className="font-semibold text-foreground">Datos de la Escuela</h3>
+                <h3 className="font-semibold text-foreground">Datos de la Subcomisión</h3>
                 <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Nombre de la Sede</FormLabel>
+                    <FormLabel>Nombre de la Subcomisión</FormLabel>
                     <FormControl>
-                        <Input placeholder="Ej: Escuela de River - Córdoba" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="province"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Provincia</FormLabel>
-                    <FormControl>
-                        <Input placeholder="Córdoba" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="city"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Ciudad</FormLabel>
-                    <FormControl>
-                        <Input placeholder="Córdoba Capital" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Dirección (Opcional)</FormLabel>
-                    <FormControl>
-                        <Input placeholder="Av. Siempre Viva 742" {...field} />
+                        <Input placeholder="Ej: Remo U17" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -295,7 +271,7 @@ export function CreateSchoolDialog() {
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSubmitting ? "Creando..." : "Crear Escuela y Admin"}
+                {isSubmitting ? "Creando..." : "Crear Subcomisión"}
               </Button>
             </DialogFooter>
           </form>

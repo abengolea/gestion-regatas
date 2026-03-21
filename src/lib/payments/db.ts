@@ -8,7 +8,7 @@ import { getAdminFirestore, getAdminAuth } from '@/lib/firebase-admin';
 import { COLLECTIONS, REGISTRATION_PERIOD, CLOTHING_PERIOD_PREFIX, MERCADOPAGO_CONNECTION_DOC } from './constants';
 import { getDueDate, isRegistrationPeriod, isClothingPeriod } from './schemas';
 import type { Payment, PaymentIntent, PaymentConfig, DelinquentInfo, MercadoPagoConnection } from '@/lib/types/payments';
-import type { Player } from '@/lib/types';
+import type { Socio } from '@/lib/types';
 import { getCategoryLabel } from '@/lib/utils';
 
 type Firestore = admin.firestore.Firestore;
@@ -53,10 +53,14 @@ function toDate(val: unknown): Date {
 function toPayment(docSnap: DocumentSnapshot): Payment {
   const d = docSnap.data()!;
   const period = d.period as string;
+  const socioId = (d.socioId ?? d.playerId) as string;
+  const subcomisionId = (d.subcomisionId ?? d.schoolId) as string;
   return {
     id: docSnap.id,
-    playerId: d.playerId,
-    schoolId: d.schoolId,
+    socioId,
+    subcomisionId,
+    playerId: socioId,
+    schoolId: subcomisionId,
     period,
     amount: d.amount,
     currency: d.currency ?? 'ARS',
@@ -75,7 +79,7 @@ export async function getOrCreatePaymentConfig(
   db: Firestore,
   schoolId: string
 ): Promise<PaymentConfig> {
-  const configRef = db.collection('schools').doc(schoolId).collection('paymentConfig').doc('default');
+  const configRef = db.collection('subcomisiones').doc(schoolId).collection('paymentConfig').doc('default');
   const snap = await configRef.get();
   if (snap.exists) {
     const d = snap.data()!;
@@ -173,7 +177,7 @@ export async function getExpectedAmountForPeriod(
   period: string,
   config: PaymentConfig
 ): Promise<number> {
-  const playerRef = db.collection('schools').doc(schoolId).collection('players').doc(playerId);
+  const playerRef = db.collection('schools').doc(schoolId).collection('socios').doc(playerId);
   const playerSnap = await playerRef.get();
   const birthDate = playerSnap.exists && playerSnap.data()?.birthDate
     ? toDate(playerSnap.data()!.birthDate)
@@ -195,10 +199,10 @@ export async function getExpectedAmountForPeriod(
     return idx <= remainder ? base + 1 : base;
   }
 
-  const playerData = playerSnap.exists ? playerSnap.data()! : null;
-  const amount = getAmountForPlayer(config, category, playerData ? { genero: playerData.genero } : undefined);
-  if (!playerSnap.exists || !playerData) return amount;
-  const activatedAt = playerData.createdAt ? toDate(playerData.createdAt) : new Date();
+  const socioData = playerSnap.exists ? playerSnap.data()! : null;
+  const amount = getAmountForPlayer(config, category, socioData ? { genero: socioData.genero } : undefined);
+  if (!playerSnap.exists || !socioData) return amount;
+  const activatedAt = socioData.createdAt ? toDate(socioData.createdAt) : new Date();
   const activationPeriod = `${activatedAt.getFullYear()}-${String(activatedAt.getMonth() + 1).padStart(2, '0')}`;
   const activationDay = activatedAt.getDate();
   const prorateDay = config.prorateDayOfMonth ?? 15;
@@ -208,15 +212,21 @@ export async function getExpectedAmountForPeriod(
   return prorated ? Math.round(amount * proratePct) : amount;
 }
 
-/** Verifica que el jugador exista en esa escuela y no esté archivado. Regla: solo crear pagos con jugadores no archivados. */
+/** Verifica que el socio exista en esa subcomisión y no esté archivado. Soporta subcomisiones/socios y schools/players (legacy). */
 export async function playerExistsInSchool(
   db: Firestore,
   schoolId: string,
   playerId: string
 ): Promise<boolean> {
-  const ref = db.collection('schools').doc(schoolId).collection('players').doc(playerId);
-  const snap = await ref.get();
-  if (!snap.exists) return false;
+  // Regatas+: subcomisiones/socios
+  const ref = db.collection('subcomisiones').doc(schoolId).collection('socios').doc(playerId);
+  let snap = await ref.get();
+  if (!snap.exists) {
+    // Legacy: schools/players
+    const legacyRef = db.collection('schools').doc(schoolId).collection('players').doc(playerId);
+    snap = await legacyRef.get();
+    if (!snap.exists) return false;
+  }
   const archived = snap.data()?.archived === true;
   return !archived;
 }
@@ -257,7 +267,7 @@ export async function updatePaymentPeriod(
   if (payment.status !== 'approved') return null;
   if (payment.period === newPeriod) return payment; // No-op
 
-  const duplicate = await existsOtherApprovedPayment(db, payment.playerId, newPeriod, paymentId);
+  const duplicate = await existsOtherApprovedPayment(db, payment.socioId ?? payment.playerId ?? "", newPeriod, paymentId);
   if (duplicate) return null;
 
   const newPaymentType = isRegistrationPeriod(newPeriod) ? 'registration' : isClothingPeriod(newPeriod) ? 'clothing' : 'monthly';
@@ -418,26 +428,25 @@ export async function createPayment(
   const now = admin.firestore.Timestamp.now();
   const col = db.collection(COLLECTIONS.payments);
 
+  const firestoreData = {
+    ...data,
+    playerId: data.socioId,
+    schoolId: data.subcomisionId,
+    paymentType,
+    paidAt: data.paidAt ?? null,
+    createdAt: now,
+  };
+
   if (idempotencyKey) {
     const ref = col.doc(idempotencyKey);
     const existing = await ref.get();
     if (existing.exists) return toPayment(existing);
-    await ref.set({
-      ...data,
-      paymentType,
-      paidAt: data.paidAt ?? null,
-      createdAt: now,
-    });
+    await ref.set(firestoreData);
     const snap = await ref.get();
     return toPayment(snap);
   }
 
-  const ref = await col.add({
-    ...data,
-    paymentType,
-    paidAt: data.paidAt ?? null,
-    createdAt: now,
-  });
+  const ref = await col.add(firestoreData);
   const snap = await ref.get();
   return toPayment(snap);
 }
@@ -466,7 +475,7 @@ export async function createPaymentIntent(
   };
 }
 
-/** Obtiene nombres de jugadores por IDs (schools/{schoolId}/players). Si el ID no es un doc, intenta resolverlo como UID de Firebase Auth (email → playerLogins → jugador). */
+/** Obtiene nombres de jugadores por IDs (schools/{schoolId}/players). Si el ID no es un doc, intenta resolverlo como UID de Firebase Auth (email → socioLogins → jugador). */
 export async function getPlayerNames(
   db: Firestore,
   schoolId: string,
@@ -653,7 +662,7 @@ export async function listPayments(
 export async function getActivePlayersWithConfig(
   db: Firestore,
   schoolId: string
-): Promise<{ player: Player; config: PaymentConfig }[]> {
+): Promise<{ player: Socio; config: PaymentConfig }[]> {
   const playersSnap = await db
     .collection('schools')
     .doc(schoolId)
@@ -710,7 +719,7 @@ export async function getActivePlayersWithConfig(
         updatedBy: '',
       };
 
-  const players: { player: Player; config: PaymentConfig }[] = nonArchived.map((d) => {
+  const players: { player: Socio; config: PaymentConfig }[] = nonArchived.map((d) => {
     const data = d.data();
     const birthDate = data.birthDate?.toDate?.() ?? new Date(data.birthDate);
     return {
@@ -726,7 +735,7 @@ export async function getActivePlayersWithConfig(
         createdBy: data.createdBy ?? '',
         genero: data.genero,
         posicion_preferida: data.posicion_preferida,
-      } as Player,
+      } as Socio,
       config,
     };
   });
@@ -804,11 +813,19 @@ export async function computeDelinquents(
   const now = new Date();
 
   for (const { player, config } of playersWithConfig) {
-    const activatedAt = player.createdAt instanceof Date ? player.createdAt : new Date(player.createdAt);
+    const activatedAt = player.createdAt
+      ? player.createdAt instanceof Date
+        ? player.createdAt
+        : (player.createdAt as { toDate?: () => Date })?.toDate?.() ?? new Date(String(player.createdAt))
+      : new Date();
     const activationPeriod = periodFromDate(activatedAt);
     const playerPaid = paidMap.get(player.id);
     const hasPaidRegistration = playerPaid?.has(REGISTRATION_PERIOD) ?? false;
-    const birthDate = player.birthDate instanceof Date ? player.birthDate : new Date(player.birthDate);
+    const birthDate = player.birthDate
+      ? player.birthDate instanceof Date
+        ? player.birthDate
+        : (player.birthDate as { toDate?: () => Date }).toDate?.() ?? new Date(String(player.birthDate))
+      : new Date();
     const category = getCategoryLabel(birthDate);
 
     // Inscripción pendiente
@@ -818,9 +835,9 @@ export async function computeDelinquents(
       const daysOverdue = dueDate <= now ? Math.floor((now.getTime() - dueDate.getTime()) / (24 * 60 * 60 * 1000)) : 0;
       delinquents.push({
         playerId: player.id,
-        playerName: `${player.firstName} ${player.lastName}`.trim(),
+        playerName: `${player.firstName ?? ""} ${player.lastName ?? ""}`.trim(),
         playerEmail: player.email,
-        tutorContact: player.tutorContact,
+        tutorContact: player.tutorContact ?? { name: "", phone: "" },
         schoolId,
         period: REGISTRATION_PERIOD,
         dueDate,
@@ -866,9 +883,9 @@ export async function computeDelinquents(
       const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (24 * 60 * 60 * 1000));
       delinquents.push({
         playerId: player.id,
-        playerName: `${player.firstName} ${player.lastName}`.trim(),
+        playerName: `${player.firstName ?? ""} ${player.lastName ?? ""}`.trim(),
         playerEmail: player.email,
-        tutorContact: player.tutorContact,
+        tutorContact: player.tutorContact ?? { name: "", phone: "" },
         schoolId,
         period,
         dueDate,
@@ -894,9 +911,9 @@ export async function computeDelinquents(
         const daysOverdue = dueDate <= now ? Math.floor((now.getTime() - dueDate.getTime()) / (24 * 60 * 60 * 1000)) : 0;
         delinquents.push({
           playerId: player.id,
-          playerName: `${player.firstName} ${player.lastName}`.trim(),
+          playerName: `${player.firstName ?? ""} ${player.lastName ?? ""}`.trim(),
           playerEmail: player.email,
-          tutorContact: player.tutorContact,
+          tutorContact: player.tutorContact ?? { name: "", phone: "" },
           schoolId,
           period,
           dueDate,
@@ -912,15 +929,21 @@ export async function computeDelinquents(
   return delinquents.sort((a, b) => b.daysOverdue - a.daysOverdue);
 }
 
-/** Actualiza status del jugador (ej. a suspended). Si el documento no existe, no hace nada (evita 500 en webhook). */
+/** Actualiza status del socio. Soporta subcomisiones/socios y schools/players (legacy). */
 export async function updatePlayerStatus(
   db: Firestore,
   schoolId: string,
   playerId: string,
   status: 'active' | 'inactive' | 'suspended'
 ): Promise<void> {
-  const ref = db.collection('schools').doc(schoolId).collection('players').doc(playerId);
-  const snap = await ref.get();
-  if (!snap.exists) return;
+  const ref = db.collection('subcomisiones').doc(schoolId).collection('socios').doc(playerId);
+  let snap = await ref.get();
+  if (!snap.exists) {
+    const legacyRef = db.collection('schools').doc(schoolId).collection('players').doc(playerId);
+    snap = await legacyRef.get();
+    if (!snap.exists) return;
+    await legacyRef.update({ status });
+    return;
+  }
   await ref.update({ status });
 }

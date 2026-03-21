@@ -3,26 +3,26 @@
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useDoc, useUserProfile } from "@/firebase";
-import type { School } from "@/lib/types";
+import type { Subcomision } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, Shield, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SchoolUsersList } from "@/components/admin/SchoolUsersList";
+import { SubcomisionUsersList } from "@/components/admin/SchoolUsersList";
 import { useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerTable } from "@/components/players/PlayerTable";
 
-export default function SchoolAdminPage() {
+export default function SubcomisionAdminPage() {
   const params = useParams();
   const router = useRouter();
   const schoolId = params.schoolId as string;
   const { isSuperAdmin, profile, isReady: profileReady } = useUserProfile();
 
-  const { data: school, loading: schoolLoading } = useDoc<School>(`schools/${schoolId}`);
+  const { data: school, loading: schoolLoading } = useDoc<Subcomision>(`subcomisiones/${schoolId}`);
 
   const isLoading = schoolLoading || !profileReady;
-  const canManageSchool = isSuperAdmin || (profile?.role === 'school_admin' && profile?.activeSchoolId === schoolId);
+  const canManageSchool = isSuperAdmin || (profile?.role === 'admin_subcomision' && profile?.activeSchoolId === schoolId);
 
   useEffect(() => {
     // Only perform redirect logic after loading is complete and if the user is not authorized.
@@ -89,7 +89,7 @@ export default function SchoolAdminPage() {
                 </TabsTrigger>
             </TabsList>
             <TabsContent value="users">
-                <SchoolUsersList schoolId={schoolId} />
+                <SubcomisionUsersList schoolId={schoolId} />
             </TabsContent>
             <TabsContent value="players">
                  <Card>

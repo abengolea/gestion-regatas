@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFirestore, useCollection } from "@/firebase";
-import type { Player } from "@/lib/types";
+import type { Socio } from "@/lib/types";
 import { buildEmailHtml, escapeHtml, htmlToPlainText, sendMailDoc } from "@/lib/email";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,23 +13,25 @@ import { useToast } from "@/hooks/use-toast";
 import { Mail, Loader2 } from "lucide-react";
 
 interface NovedadesMailCardProps {
-  schoolId: string;
+  subcomisionId?: string;
+  schoolId?: string;
   schoolName: string;
 }
 
-export function NovedadesMailCard({ schoolId, schoolName }: NovedadesMailCardProps) {
+export function NovedadesMailCard({ subcomisionId: subcomisionIdProp, schoolId, schoolName }: NovedadesMailCardProps) {
+  const subcomisionId = subcomisionIdProp ?? schoolId;
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { data: playersData, loading: playersLoading } = useCollection<Player>(
-    schoolId ? `schools/${schoolId}/players` : ""
+  const { data: sociosData, loading: playersLoading } = useCollection<Socio>(
+    subcomisionId ? `subcomisiones/${subcomisionId}/socios` : ""
   );
-  const players = (playersData ?? []).filter((p) => !p.archived);
+  const socios = (sociosData ?? []).filter((p: Socio) => !p.archived);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
 
-  const withEmail = players.filter((p) => p.email?.trim());
-  const withoutEmail = players.length - withEmail.length;
+  const withEmail = socios.filter((p: Socio) => p.email?.trim());
+  const withoutEmail = socios.length - withEmail.length;
 
   const handleSendAll = async () => {
     const subj = subject.trim();

@@ -9,15 +9,15 @@ import { z } from 'zod';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import {
   getOrCreatePlatformFeeConfig,
-  getOrCreateSchoolFeeConfig,
-  findApprovedSchoolFeePayment,
+  getOrCreateClubFeeConfig,
+  findApprovedClubFeePayment,
   getSchoolMonthlyAmount,
 } from '@/lib/payments/platform-fee';
 import { createPlatformFeePreference } from '@/lib/payments/mercadopago-platform-preference';
 import { verifySuperAdmin } from '@/lib/auth-server';
 
 const BodySchema = z.object({
-  schoolId: z.string().min(1),
+  subcomisionId: z.string().min(1),
   period: z.string().regex(/^\d{4}-\d{2}$/, 'Formato YYYY-MM'),
 });
 
@@ -45,10 +45,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const { schoolId, period } = parsed.data;
+    const { subcomisionId, period } = parsed.data;
+    const schoolId = subcomisionId;
     const db = getAdminFirestore();
 
-    const existing = await findApprovedSchoolFeePayment(db, schoolId, period);
+    const existing = await findApprovedClubFeePayment(db, schoolId, period);
     if (existing) {
       return NextResponse.json(
         { error: 'Esta mensualidad ya está pagada' },
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
     }
 
     const platformConfig = await getOrCreatePlatformFeeConfig(db);
-    const schoolConfig = await getOrCreateSchoolFeeConfig(db, schoolId);
+    const schoolConfig = await getOrCreateClubFeeConfig(db, schoolId);
 
     if (schoolConfig.isBonified) {
       return NextResponse.json(
@@ -85,11 +86,11 @@ export async function POST(request: Request) {
     const lateFeeAmount = Math.round(baseAmount * lateFeePct * Math.ceil(daysOverdue / 30));
     const totalAmount = baseAmount + lateFeeAmount;
 
-    const schoolSnap = await db.collection('schools').doc(schoolId).get();
+    const schoolSnap = await db.collection('subcomisiones').doc(schoolId).get();
     const schoolName = schoolSnap.exists ? (schoolSnap.data()?.name ?? 'Escuela') : 'Escuela';
 
     const { init_point } = await createPlatformFeePreference(platformToken, {
-      schoolId,
+      subcomisionId: schoolId,
       schoolName,
       period,
       amount: totalAmount,

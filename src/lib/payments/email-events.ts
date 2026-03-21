@@ -11,8 +11,8 @@ const MAIL_COLLECTION = 'mail';
 const EMAIL_EVENTS_COLLECTION = 'emailEvents';
 
 /** Genera idempotency key para evitar duplicados */
-export function idempotencyKey(type: EmailEventType, playerId: string, period: string): string {
-  return `${type}:${playerId}:${period}`;
+export function idempotencyKey(type: EmailEventType, socioId: string, period: string): string {
+  return `${type}:${socioId}:${period}`;
 }
 
 export interface ReminderInfo {
@@ -26,7 +26,7 @@ export interface ReminderInfo {
  */
 export async function getReminderCountsForDelinquents(
   db: admin.firestore.Firestore,
-  schoolId: string,
+  subcomisionId: string,
   items: { playerId: string; period: string }[]
 ): Promise<Map<string, ReminderInfo>> {
   const map = new Map<string, ReminderInfo>();
@@ -34,7 +34,7 @@ export async function getReminderCountsForDelinquents(
 
   const snap = await db
     .collection(EMAIL_EVENTS_COLLECTION)
-    .where('schoolId', '==', schoolId)
+    .where('schoolId', '==', subcomisionId)
     .where('type', '==', 'payment_reminder_manual')
     .get();
 
@@ -146,7 +146,7 @@ export async function sendEmailEvent(params: SendEmailEventParams): Promise<bool
 
   switch (type) {
     case 'payment_reminder_manual':
-      subject = `Recordatorio de pago - ${schoolNameSafe} - Escuelas River`;
+      subject = `Recordatorio de pago - ${schoolNameSafe} - Regatas+`;
       contentHtml = `
         <p>Hola ${escapeHtml(playerName)},</p>
         <p>Te recordamos desde ${escapeHtml(schoolNameSafe)} que tenés pendiente el pago del período <strong>${escapeHtml(period)}</strong> (${amountStr}).</p>
@@ -189,7 +189,7 @@ export async function sendEmailEvent(params: SendEmailEventParams): Promise<bool
     }
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://escuelas-river.vercel.app";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://regatas-plus.vercel.app";
   const logoUrl = `${baseUrl.replace(/\/$/, "")}/LogoRiverNuevo_1_2.png`;
 
   const html = buildEmailHtml(contentHtml, {

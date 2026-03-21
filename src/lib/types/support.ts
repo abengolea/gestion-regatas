@@ -1,13 +1,13 @@
 /**
  * Tipos para el Centro de Soporte: flujos guiados, conversaciones, tickets y eventos.
- * Multi-tenant: schoolId como partición en paths de Firestore.
+ * Multi-tenant: subcomisionId como partición en paths de Firestore.
  */
 
 // --- Support Flow (config-driven) ---
 
 export type SupportStepType =
   | 'choice'   // Botones/opciones
-  | 'form'     // Campos estructurados (severity, playerId, etc.)
+  | 'form'     // Campos estructurados (severity, socioId, etc.)
   | 'info'     // Solo mensaje informativo
   | 'ai_free_text'  // Usuario escribe libre; opcionalmente llamar IA
   | 'confirm'  // Confirmar antes de crear ticket

@@ -15,11 +15,11 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/firebase";
 
-interface EditCoachFeedbackDialogProps {
+interface EditEncargadoDeportivoFeedbackDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  schoolId: string;
-  playerId: string;
+  subcomisionId: string;
+  socioId: string;
   playerName: string;
   initialValue: string;
   onSuccess?: () => void;
@@ -28,12 +28,12 @@ interface EditCoachFeedbackDialogProps {
 export function EditCoachFeedbackDialog({
   isOpen,
   onOpenChange,
-  schoolId,
-  playerId,
+  subcomisionId,
+  socioId,
   playerName,
   initialValue,
   onSuccess,
-}: EditCoachFeedbackDialogProps) {
+}: EditEncargadoDeportivoFeedbackDialogProps) {
   const { user } = useUser();
   const { toast } = useToast();
   const [value, setValue] = useState(initialValue);
@@ -67,8 +67,8 @@ export function EditCoachFeedbackDialog({
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          schoolId,
-          playerId,
+          schoolId: subcomisionId,
+          playerId: socioId,
           coachFeedback: value,
         }),
       });

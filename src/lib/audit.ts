@@ -5,8 +5,9 @@ export type AuditAction =
   | "school.create"
   | "school.update"
   | "school.status_change"
-  | "platform_user.promote_super_admin"
+  | "platform_user.promote_gerente_club"
   | "platform_user.demote_super_admin"
+  | "platform_user.promote_super_admin"
   | "platform_config.update"
   | "physical_assessment_template.accept_field";
 
@@ -14,6 +15,8 @@ export interface AuditPayload {
   action: AuditAction;
   resourceType: string;
   resourceId?: string;
+  subcomisionId?: string;
+  /** @deprecated Use subcomisionId */
   schoolId?: string;
   details?: string;
 }
@@ -33,7 +36,7 @@ export async function writeAuditLog(
     action: payload.action,
     resourceType: payload.resourceType,
     resourceId: payload.resourceId ?? null,
-    schoolId: payload.schoolId ?? null,
+    schoolId: payload.subcomisionId ?? (payload as { schoolId?: string }).schoolId ?? null,
     details: payload.details ?? null,
     createdAt: serverTimestamp(),
   });

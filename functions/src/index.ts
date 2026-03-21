@@ -1,5 +1,5 @@
 /**
- * Cloud Functions para Escuelas River.
+ * Cloud Functions para Regatas+.
  *
  * - enforceDelinquencyAndSuspensions: Job diario que:
  *   - Recorre jugadores activos por escuela
@@ -47,7 +47,7 @@ function periodsFromActivationToNow(activatedAt: Date): string[] {
   return periods;
 }
 
-/** Busca pago aprobado para playerId + period */
+/** Busca pago aprobado para socioId + period */
 async function findApprovedPayment(
   playerId: string,
   period: string
@@ -66,7 +66,7 @@ async function findApprovedPayment(
 async function ensureEmailSent(
   type: string,
   playerId: string,
-  schoolId: string,
+  subcomisionId: string,
   period: string
 ): Promise<boolean> {
   const key = `${type}:${playerId}:${period}`;
@@ -121,7 +121,7 @@ export const enforceDelinquencyAndSuspensions = onSchedule(
     logger.info('Starting enforceDelinquencyAndSuspensions');
     const now = new Date();
 
-    const schoolsSnap = await db.collection('schools').get();
+    const subcomisionesSnap = await db.collection('schools').get();
     let processed = 0;
     let suspended = 0;
     let emailsSent = 0;
@@ -145,7 +145,7 @@ export const enforceDelinquencyAndSuspensions = onSchedule(
       const daysSusp = config?.delinquencyDaysSuspension ?? 30;
       if (amount <= 0) continue;
 
-      const playersSnap = await db
+      const sociosSnap = await db
         .collection('schools')
         .doc(schoolId)
         .collection('players')
@@ -154,7 +154,7 @@ export const enforceDelinquencyAndSuspensions = onSchedule(
 
       for (const playerDoc of playersSnap.docs) {
         const playerId = playerDoc.id;
-        const playerData = playerDoc.data();
+        const socioData = playerDoc.data();
         const playerName = `${playerData.firstName ?? ''} ${playerData.lastName ?? ''}`.trim();
         const toEmail = playerData.email;
         const createdAt = playerData.createdAt?.toDate?.() ?? new Date(playerData.createdAt);
@@ -226,7 +226,7 @@ export const enforceDelinquencyAndSuspensions = onSchedule(
  * Job diario: suspender escuelas en mora de mensualidad a la plataforma.
  * Si una escuela supera delinquencyDaysSuspension días sin pagar, se suspende.
  */
-export const enforceSchoolFeeSuspensions = onSchedule(
+export const enforceClubFeeSuspensions = onSchedule(
   {
     schedule: '0 10 * * *', // 10:00 UTC = 7:00 Argentina
     timeZone: 'America/Argentina/Buenos_Aires',
@@ -251,7 +251,7 @@ export const enforceSchoolFeeSuspensions = onSchedule(
       const feeCfgSnap = await db
         .collection('schools')
         .doc(schoolId)
-        .collection('schoolFeeConfig')
+        .collection('clubFeeConfig')
         .doc('default')
         .get();
       const feeCfg = feeCfgSnap.data();
@@ -273,7 +273,7 @@ export const enforceSchoolFeeSuspensions = onSchedule(
         const dueDate = new Date(y, m - 1, day);
         if (dueDate <= now) {
           const paySnap = await db
-            .collection('schoolFeePayments')
+            .collection('clubFeePayments')
             .where('schoolId', '==', schoolId)
             .where('period', '==', period)
             .where('status', '==', 'approved')
@@ -293,10 +293,13 @@ export const enforceSchoolFeeSuspensions = onSchedule(
       if (shouldSuspend) {
         await db.collection('schools').doc(schoolId).update({ status: 'suspended' });
         suspendedCount++;
-        logger.info(`School ${schoolId} suspended for platform fee delinquency`);
+        logger.info(`Subcomision ${schoolId} suspended for platform fee delinquency`);
       }
     }
 
     logger.info(`enforceSchoolFeeSuspensions done: suspended=${suspendedCount}`);
   }
 );
+
+/** Registra membresía en NotificasHub cuando se crea un socio con celular */
+export { onSocioCreated } from './socios/onSocioCreated';

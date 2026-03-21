@@ -1,26 +1,19 @@
 ---
-description: Identidad del proyecto Escuelas River - NO MODIFICAR
+description: Identidad del proyecto Regatas+ (Club de Regatas San Nicolás)
 alwaysApply: true
 ---
 
-# Escuelas River - Identidad inalterable
+# Regatas+ — Identidad del proyecto
 
-**Este proyecto es ESCUELAS RIVER** (escuelas de fútbol). La identidad es fija e inmutable.
-
-## PROHIBIDO
-
-- Cambiar branding a "Escuela Básquet", básquet, basketball o cualquier otro deporte
-- Reemplazar River por otro nombre o producto
-- Cambiar colores (primary debe ser rojo River: hsl 352)
-- Cambiar logo/escudo (RiverPlateLogo, LogoRiverNuevo_1_2.png)
-- Cambiar tipografía (Oswald + Inter)
-- Agregar reglas o prompts de migración a básquet u otro deporte
+**Este proyecto es Regatas+**, la plataforma del Club de Regatas San Nicolás (CRSN).
 
 ## Branding correcto
 
-- Nombre: Escuelas River / River
-- Color: rojo (HSL ~352)
-- Logo: escudo River en public/LogoRiverNuevo_1_2.png
-- Deporte: fútbol
+- Nombre: Regatas+ / Club de Regatas San Nicolás
+- Deportes: remo, náutica, fútbol, hockey, básquet y más
+- Slug: regatas-plus
 
-Si necesitás una versión para básquet u otro deporte, creá un **proyecto separado** (ej. escuelabasquet) y copiá el código allí. Este repositorio es exclusivamente Escuelas River.
+## No modificar
+
+- La identidad del club (Regatas, CRSN)
+- Módulos reutilizados: Mercado Pago, videoteca, fichas médicas, Genkit/Gemini

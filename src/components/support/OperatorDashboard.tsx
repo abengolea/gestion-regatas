@@ -76,7 +76,7 @@ export function OperatorDashboard() {
 
   const canOperate = isReady && isSuperAdmin;
   const path = canOperate && schoolFilter
-    ? `schools/${schoolFilter}/supportTickets`
+    ? `subcomisiones/${schoolFilter}/supportTickets`
     : '';
 
   const { data: tickets, loading } = useCollection<SupportTicket & { id: string }>(
@@ -87,7 +87,7 @@ export function OperatorDashboard() {
     }
   );
 
-  const ticketsWithSchool = (tickets ?? []).map((t) => ({ ...t, schoolId: t.schoolId ?? schoolFilter }));
+  const ticketsWithSchool = (tickets ?? []).map((t) => ({ ...t, subcomisionId: t.schoolId ?? schoolFilter }));
   const filteredTickets =
     statusFilter && statusFilter !== 'all'
       ? ticketsWithSchool.filter((t) => t.status === statusFilter)
@@ -127,7 +127,7 @@ export function OperatorDashboard() {
         try {
           const statusLabel = statusLabels[newStatus] ?? newStatus;
           const contentHtml = `<p>Tu ticket de soporte <strong>#${ticket.ticketNumber}</strong> fue marcado como <strong>${escapeHtml(statusLabel)}</strong>.</p><p>Resumen: ${escapeHtml(ticket.summary)}</p><p>Si tenés más dudas, podés abrir otro ticket desde el Centro de Soporte en la app.</p>`;
-          const subject = `Ticket #${ticket.ticketNumber} ${statusLabel} - Escuelas River`;
+          const subject = `Ticket #${ticket.ticketNumber} ${statusLabel} - Regatas+`;
           const html = buildEmailHtml(contentHtml, {
             title: subject,
             greeting: `Hola${ticket.userDisplayName ? ` ${escapeHtml(ticket.userDisplayName)}` : ''},`,

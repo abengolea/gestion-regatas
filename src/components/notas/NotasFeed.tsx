@@ -9,9 +9,11 @@ interface NotasFeedProps {
   initialPosts: Post[];
   initialCursor: string | null;
   schoolSlug?: string;
+  subcomisionSlug?: string;
 }
 
-export function NotasFeed({ initialPosts, initialCursor, schoolSlug }: NotasFeedProps) {
+export function NotasFeed({ initialPosts, initialCursor, schoolSlug, subcomisionSlug }: NotasFeedProps) {
+  const slug = schoolSlug ?? subcomisionSlug;
   const [posts, setPosts] = useState(initialPosts);
   const [cursor, setCursor] = useState(initialCursor);
   const [loading, setLoading] = useState(false);
@@ -26,7 +28,7 @@ export function NotasFeed({ initialPosts, initialCursor, schoolSlug }: NotasFeed
         limit: "12",
         cursor,
       });
-      if (schoolSlug) params.set("schoolSlug", schoolSlug);
+      if (slug) params.set("schoolSlug", slug);
       if (search) params.set("search", search);
       const res = await fetch(`/api/posts?${params}`);
       if (!res.ok) throw new Error("Error al cargar");
@@ -47,7 +49,7 @@ export function NotasFeed({ initialPosts, initialCursor, schoolSlug }: NotasFeed
         status: "published",
         limit: "24",
       });
-      if (schoolSlug) params.set("schoolSlug", schoolSlug);
+      if (slug) params.set("schoolSlug", slug);
       if (search) params.set("search", search);
       const res = await fetch(`/api/posts?${params}`);
       if (!res.ok) throw new Error("Error al buscar");

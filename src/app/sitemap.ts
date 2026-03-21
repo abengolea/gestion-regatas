@@ -1,10 +1,10 @@
 import { MetadataRoute } from "next";
 import { listPosts } from "@/lib/posts/server";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://escuelas-river.vercel.app";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://regatas-plus.vercel.app";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  let posts: Array<{ schoolSlug: string; slug: string; updatedAt: Date }> = [];
+  let posts: import("@/lib/types/posts").Post[] = [];
   try {
     const result = await listPosts({
       status: "published",
@@ -16,8 +16,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const noteUrls: MetadataRoute.Sitemap = posts.map((post) => ({
-    url: `${BASE_URL}/escuelas/${post.schoolSlug}/notas/${post.slug}`,
-    lastModified: post.updatedAt instanceof Date ? post.updatedAt : new Date(post.updatedAt),
+    url: `${BASE_URL}/escuelas/${post.subcomisionSlug}/notas/${post.slug}`,
+    lastModified: post.updatedAt instanceof Date ? post.updatedAt : post.updatedAt ? new Date(post.updatedAt) : new Date(),
     changeFrequency: "weekly" as const,
     priority: 0.7,
   }));

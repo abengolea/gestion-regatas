@@ -1,11 +1,11 @@
 "use client";
 import { Header } from "@/components/layout/Header";
 import { SidebarNav } from "@/components/layout/SidebarNav";
-import { SchoolFeeBanner } from "@/components/admin/SchoolFeeBanner";
+import { ClubFeeBanner } from "@/components/admin/SchoolFeeBanner";
 import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
 import { useUserProfile, useDoc } from "@/firebase";
 import { isPlayerProfileComplete } from "@/lib/utils";
-import type { Player } from "@/lib/types";
+import type { Socio } from "@/lib/types";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 
@@ -17,10 +17,10 @@ export default function DashboardLayout({
   const { profile, isReady, user } = useUserProfile();
   const router = useRouter();
   const pathname = usePathname();
-  const playerPath = profile?.role === "player" && profile?.activeSchoolId && profile?.playerId
-    ? `schools/${profile.activeSchoolId}/players/${profile.playerId}`
+  const playerPath = profile?.role === "player" && profile?.activeSchoolId && profile?.socioId
+    ? `subcomisiones/${profile.activeSchoolId}/socios/${profile.playerId}`
     : "";
-  const { data: player } = useDoc<Player>(playerPath);
+  const { data: player } = useDoc<Socio>(playerPath);
 
   useEffect(() => {
     // This effect handles redirects once the profile status is determined.
@@ -45,7 +45,7 @@ export default function DashboardLayout({
     const isOnProfilePage = pathname === profilePath || pathname?.startsWith(profilePath + "/");
     const isOnPaymentsPage = pathname === "/dashboard/payments";
     if (!isOnProfilePage && !isOnPaymentsPage) {
-      router.replace(`${profilePath}?schoolId=${profile.activeSchoolId}`);
+      router.replace(`${profilePath}?subcomisionId=${profile.activeSchoolId}`);
     }
   }, [isReady, profile, player, pathname, router]);
 
@@ -63,7 +63,7 @@ export default function DashboardLayout({
         </Sidebar>
         <SidebarInset className="bg-background min-w-0 overflow-x-hidden">
           <Header />
-          <SchoolFeeBanner />
+          <ClubFeeBanner />
           <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 p-4 pt-6 md:p-8">
             {children}
           </main>

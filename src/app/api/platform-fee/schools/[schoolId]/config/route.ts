@@ -1,5 +1,5 @@
 /**
- * GET /api/platform-fee/schools/[schoolId]/config
+ * GET /api/platform-fee/subcomisiones/[subcomisionId]/config
  * Obtiene configuración de mensualidad de la escuela (super admin).
  *
  * PUT /api/platform-fee/schools/[schoolId]/config
@@ -9,7 +9,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAdminFirestore } from '@/lib/firebase-admin';
-import { getOrCreateSchoolFeeConfig, saveSchoolFeeConfig } from '@/lib/payments/platform-fee';
+import { getOrCreateClubFeeConfig, saveClubFeeConfig } from '@/lib/payments/platform-fee';
 import { verifySuperAdmin } from '@/lib/auth-server';
 
 const PutBodySchema = z.object({
@@ -34,7 +34,7 @@ export async function GET(
     }
 
     const db = getAdminFirestore();
-    const config = await getOrCreateSchoolFeeConfig(db, schoolId);
+    const config = await getOrCreateClubFeeConfig(db, schoolId);
 
     return NextResponse.json({
       ...config,
@@ -74,10 +74,10 @@ export async function PUT(
     }
 
     const db = getAdminFirestore();
-    const current = await getOrCreateSchoolFeeConfig(db, schoolId);
+    const current = await getOrCreateClubFeeConfig(db, schoolId);
     const now = new Date();
 
-    await saveSchoolFeeConfig(db, schoolId, {
+    await saveClubFeeConfig(db, schoolId, {
       ...current,
       ...parsed.data,
       updatedAt: now,

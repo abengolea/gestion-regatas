@@ -1,5 +1,5 @@
 /**
- * GET /api/payments/players-status?schoolId=...
+ * GET /api/payments/socios-status?subcomisionId=...
  * Devuelve el estado de pagos de todos los jugadores: morosos (inscripción/cuota) y ropa pendiente.
  * Solo admin de escuela o super admin.
  */
@@ -25,16 +25,17 @@ export async function GET(request: Request) {
     const db = getAdminFirestore();
     const uid = auth.uid;
 
-    const schoolUserSnap = await db.doc(`schools/${schoolId}/users/${uid}`).get();
+    const schoolUserSnap = await db.doc(`subcomisiones/${schoolId}/users/${uid}`).get();
     const platformUserSnap = await db.doc(`platformUsers/${uid}`).get();
-    const isSchoolAdmin =
+    const isSubcomisionAdmin =
       schoolUserSnap.exists &&
-      (schoolUserSnap.data() as { role?: string })?.role === 'school_admin';
+      (schoolUserSnap.data() as { role?: string })?.role === 'admin_subcomision';
+    const platformData = platformUserSnap.data() as { gerente_club?: boolean; super_admin?: boolean } | undefined;
     const isSuperAdmin =
       platformUserSnap.exists &&
-      (platformUserSnap.data() as { super_admin?: boolean })?.super_admin === true;
+      (platformData?.gerente_club ?? platformData?.super_admin) === true;
 
-    if (!isSchoolAdmin && !isSuperAdmin) {
+    if (!isSubcomisionAdmin && !isSuperAdmin) {
       return NextResponse.json(
         { error: 'Solo el administrador de la escuela puede ver el estado de pagos' },
         { status: 403 }

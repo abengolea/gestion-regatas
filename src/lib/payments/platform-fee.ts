@@ -6,8 +6,8 @@
 import type admin from 'firebase-admin';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { COLLECTIONS, PLATFORM_FEE_CONFIG_DOC, SCHOOL_FEE_CONFIG_DOC, DEFAULT_CURRENCY } from './constants';
-import type { PlatformFeeConfig, SchoolFeeConfig, SchoolFeePayment, SchoolFeeDelinquent } from '@/lib/types/platform-fee';
-import type { School } from '@/lib/types';
+import type { PlatformFeeConfig, ClubFeeConfig, SchoolFeePayment, SchoolFeeDelinquent } from '@/lib/types/platform-fee';
+import type { Subcomision } from '@/lib/types';
 
 type Firestore = admin.firestore.Firestore;
 type DocumentSnapshot = admin.firestore.DocumentSnapshot;
@@ -83,9 +83,9 @@ export async function savePlatformFeeConfig(
   });
 }
 
-/** Obtiene o crea configuración de mensualidad por escuela. */
-export async function getOrCreateSchoolFeeConfig(db: Firestore, schoolId: string): Promise<SchoolFeeConfig> {
-  const ref = db.collection('schools').doc(schoolId).collection('schoolFeeConfig').doc(SCHOOL_FEE_CONFIG_DOC);
+/** Obtiene o crea configuración de mensualidad por subcomisión. */
+export async function getOrCreateSubcomisionFeeConfig(db: Firestore, subcomisionId: string): Promise<ClubFeeConfig> {
+  const ref = db.collection('subcomisiones').doc(subcomisionId).collection('clubFeeConfig').doc(SCHOOL_FEE_CONFIG_DOC);
   const snap = await ref.get();
   if (snap.exists) {
     const d = snap.data()!;
@@ -105,14 +105,29 @@ export async function getOrCreateSchoolFeeConfig(db: Firestore, schoolId: string
   };
 }
 
-/** Guarda configuración de mensualidad por escuela. */
+/** Obtiene o crea configuración de mensualidad por escuela/subcomisión. Alias de getOrCreateSubcomisionFeeConfig. */
+export const getOrCreateSchoolFeeConfig = getOrCreateSubcomisionFeeConfig;
+
+/** Alias para uso en rutas platform-fee. */
+export const getOrCreateClubFeeConfig = getOrCreateSubcomisionFeeConfig;
+
+/** Alias para uso en rutas platform-fee. */
+export const findApprovedClubFeePayment = findApprovedSchoolFeePayment;
+
+/** Alias para uso en rutas platform-fee. */
+export const findClubFeePaymentByProviderId = findSchoolFeePaymentByProviderId;
+
+/** Alias para uso en rutas platform-fee. */
+export const computeClubFeeDelinquents = computeSchoolFeeDelinquents;
+
+/** Guarda configuración de mensualidad por subcomisión. */
 export async function saveSchoolFeeConfig(
   db: Firestore,
-  schoolId: string,
-  data: Omit<SchoolFeeConfig, 'updatedAt'> & { updatedAt: Date }
+  subcomisionId: string,
+  data: Omit<ClubFeeConfig, 'updatedAt'> & { updatedAt: Date }
 ): Promise<void> {
   const admin = await import('firebase-admin');
-  const ref = db.collection('schools').doc(schoolId).collection('schoolFeeConfig').doc(SCHOOL_FEE_CONFIG_DOC);
+  const ref = db.collection('subcomisiones').doc(subcomisionId).collection('clubFeeConfig').doc(SCHOOL_FEE_CONFIG_DOC);
   await ref.set({
     monthlyAmount: data.monthlyAmount,
     isBonified: data.isBonified ?? false,
@@ -122,13 +137,16 @@ export async function saveSchoolFeeConfig(
   });
 }
 
+/** Alias para uso en rutas platform-fee. */
+export const saveClubFeeConfig = saveSchoolFeeConfig;
+
 /** Obtiene monto base mensual para una escuela (0 si bonificada). */
 export async function getSchoolMonthlyAmount(
   db: Firestore,
   schoolId: string,
   platformConfig: PlatformFeeConfig
 ): Promise<number> {
-  const schoolConfig = await getOrCreateSchoolFeeConfig(db, schoolId);
+  const schoolConfig = await getOrCreateSubcomisionFeeConfig(db, schoolId);
   if (schoolConfig.isBonified) return 0;
   return schoolConfig.monthlyAmount > 0 ? schoolConfig.monthlyAmount : (platformConfig.defaultMonthlyAmount ?? 0);
 }
@@ -140,7 +158,7 @@ export async function findApprovedSchoolFeePayment(
   period: string
 ): Promise<SchoolFeePayment | null> {
   const snap = await db
-    .collection(COLLECTIONS.schoolFeePayments)
+    .collection(COLLECTIONS.clubFeePayments)
     .where('schoolId', '==', schoolId)
     .where('period', '==', period)
     .where('status', '==', 'approved')
@@ -175,7 +193,7 @@ export async function createSchoolFeePayment(
 ): Promise<SchoolFeePayment> {
   const admin = await import('firebase-admin');
   const now = admin.firestore.Timestamp.now();
-  const col = db.collection(COLLECTIONS.schoolFeePayments);
+  const col = db.collection(COLLECTIONS.clubFeePayments);
 
   if (idempotencyKey) {
     const ref = col.doc(idempotencyKey);
@@ -206,7 +224,7 @@ export async function findSchoolFeePaymentByProviderId(
   providerPaymentId: string
 ): Promise<SchoolFeePayment | null> {
   const snap = await db
-    .collection(COLLECTIONS.schoolFeePayments)
+    .collection(COLLECTIONS.clubFeePayments)
     .where('provider', '==', provider)
     .where('providerPaymentId', '==', providerPaymentId)
     .get();
@@ -230,7 +248,7 @@ function periodsFromSchoolCreationToNow(createdAt: Date): string[] {
 /** Calcula escuelas en mora de mensualidad. */
 export async function computeSchoolFeeDelinquents(db: Firestore): Promise<SchoolFeeDelinquent[]> {
   const platformConfig = await getOrCreatePlatformFeeConfig(db);
-  const schoolsSnap = await db.collection('schools').get();
+  const schoolsSnap = await db.collection('subcomisiones').get();
   const delinquents: SchoolFeeDelinquent[] = [];
   const now = new Date();
   const dueDay = platformConfig.dueDayOfMonth ?? 10;
@@ -239,9 +257,9 @@ export async function computeSchoolFeeDelinquents(db: Firestore): Promise<School
 
   for (const schoolDoc of schoolsSnap.docs) {
     const schoolData = schoolDoc.data();
-    const school = { id: schoolDoc.id, ...schoolData } as School & { createdAt: Date };
+    const school = { id: schoolDoc.id, ...schoolData } as Subcomision & { createdAt: Date };
     const schoolId = school.id;
-    const schoolConfig = await getOrCreateSchoolFeeConfig(db, schoolId);
+    const schoolConfig = await getOrCreateSubcomisionFeeConfig(db, schoolId);
 
     if (schoolConfig.isBonified) continue;
 
@@ -287,12 +305,12 @@ export async function computeSchoolFeeDelinquents(db: Firestore): Promise<School
 }
 
 /** Lista pagos de mensualidades (para super admin). */
-export async function listSchoolFeePayments(
+export async function listClubFeePayments(
   db: Firestore,
   opts: { schoolId?: string; period?: string; limit?: number }
 ): Promise<SchoolFeePayment[]> {
   let q = db
-    .collection(COLLECTIONS.schoolFeePayments)
+    .collection(COLLECTIONS.clubFeePayments)
     .orderBy('createdAt', 'desc') as admin.firestore.Query;
 
   if (opts.schoolId) q = q.where('schoolId', '==', opts.schoolId);

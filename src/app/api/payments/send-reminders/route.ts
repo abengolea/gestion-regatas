@@ -101,7 +101,7 @@ export async function POST(request: Request) {
       try {
         const { checkoutUrl } = await createPaymentIntentWithProvider(
           'mercadopago',
-          { playerId: item.playerId, schoolId, period: item.period, amount, currency: item.currency, mercadopagoAccessToken }
+          { socioId: item.playerId, subcomisionId: schoolId, period: item.period, amount, currency: item.currency, mercadopagoAccessToken }
         );
 
         await createPaymentIntent(db, {

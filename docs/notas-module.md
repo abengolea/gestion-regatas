@@ -9,7 +9,7 @@
 - `src/lib/posts/permissions.ts` - canUserManagePosts, getSchoolsForUser
 - `src/app/api/posts/route.ts` - GET (listar), POST (crear)
 - `src/app/api/posts/check-slug/route.ts` - GET (verificar slug único)
-- `src/app/api/posts/schools/route.ts` - GET (escuelas del usuario)
+- `src/app/api/posts/subcomisiones/route.ts` - GET (escuelas del usuario)
 - `src/app/api/posts/upload-image/route.ts` - POST (subir imagen)
 - `src/app/api/posts/[postId]/route.ts` - GET (obtener), PATCH (actualizar)
 - `src/app/api/posts/[postId]/publish/route.ts` - POST
@@ -18,7 +18,7 @@
 - `src/app/notas/page.tsx` - Feed global de notas
 - `src/app/notas/layout.tsx` - Layout público
 - `src/app/escuelas/layout.tsx` - Layout público escuelas
-- `src/app/escuelas/[schoolSlug]/notas/page.tsx` - Feed por escuela
+- `src/app/escuelas/[subcomisionSlug]/notas/page.tsx` - Feed por escuela
 - `src/app/escuelas/[schoolSlug]/notas/[postSlug]/page.tsx` - Nota individual
 - `src/app/dashboard/notas/page.tsx` - Panel admin listado
 - `src/app/dashboard/notas/nueva/page.tsx` - Crear nota
@@ -27,11 +27,11 @@
 - `src/app/sitemap.ts` - Sitemap con notas publicadas
 
 ### Modificados
-- `src/lib/types/index.ts` - export posts, School.slug, SchoolUser.role (editor, viewer)
+- `src/lib/types/index.ts` - export posts, Subcomision.slug, SubcomisionUser.role (editor, viewer)
 - `src/lib/firebase-admin.ts` - getAdminStorage()
 - `src/lib/auth-server.ts` - verifyIdToken retorna displayName
 - `firestore.rules` - posts, isEditor, isViewer, isStaffOfSchool
-- `storage.rules` - schools/{schoolId}/posts
+- `storage.rules` - schools/{subcomisionId}/posts
 - `firestore.indexes.json` - índices para posts
 - `next.config.ts` - firebasestorage.googleapis.com en images
 - `src/components/layout/SidebarNav.tsx` - ítem Notas
@@ -64,8 +64,8 @@ Si no hay slug, se usa el ID del documento como fallback en la URL.
 ## Roles
 
 - **superadmin**: gestiona todo
-- **school_admin**: publica/edita/archiva notas de su escuela
-- **coach**: crea/edita borradores de su escuela (no publica; debe aprobar school_admin)
+- **admin_subcomision**: publica/edita/archiva notas de su escuela
+- **encargado_deportivo**: crea/edita borradores de su escuela (no publica; debe aprobar school_admin)
 - **editor**: crea/edita borradores de su escuela (no publica)
 - **viewer**: solo lectura en panel
 
@@ -100,7 +100,7 @@ expect(slugify("")).toBe("post");
 - [ ] Editar borrador
 - [ ] Vista previa Markdown
 - [ ] Subir imagen destacada
-- [ ] Publicar (solo admin/coach)
+- [ ] Publicar (solo admin/encargado_deportivo)
 - [ ] Despublicar
 - [ ] Archivar
 - [ ] Ver nota pública en /escuelas/[slug]/notas/[postSlug]

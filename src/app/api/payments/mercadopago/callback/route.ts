@@ -1,6 +1,6 @@
 /**
  * GET /api/payments/mercadopago/callback?code=...&state=...
- * Callback OAuth de Mercado Pago: intercambia el code por tokens y los guarda por schoolId.
+ * Callback OAuth de Mercado Pago: intercambia el code por tokens y los guarda por subcomisionId.
  * Redirige al usuario a Pagos → Configuración con mensaje de éxito o error.
  */
 

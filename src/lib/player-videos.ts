@@ -13,18 +13,24 @@ import {
 } from "firebase/firestore";
 import type { FirebaseStorage } from "firebase/storage";
 
-export interface UploadPlayerVideoParams {
+export interface UploadSocioVideoParams {
   storage: FirebaseStorage;
   firestore: Firestore;
   userId: string;
-  schoolId: string;
-  playerId: string;
+  subcomisionId?: string;
+  socioId?: string;
+  /** @deprecated Use subcomisionId */
+  schoolId?: string;
+  /** @deprecated Use socioId */
+  playerId?: string;
   file: File;
   title?: string;
   description?: string;
   /** Habilidades/categorías: dribling, pegada, definicion, estirada, etc. */
   skills?: string[];
 }
+
+export type UploadPlayerVideoParams = UploadSocioVideoParams;
 
 export interface UploadPlayerVideoResult {
   videoId: string;
@@ -39,6 +45,8 @@ export async function uploadPlayerVideo(
     storage,
     firestore,
     userId,
+    subcomisionId: subcomisionIdProp,
+    socioId: socioIdProp,
     schoolId,
     playerId,
     file,
@@ -46,16 +54,18 @@ export async function uploadPlayerVideo(
     description,
     skills,
   } = params;
+  const subcomisionId = subcomisionIdProp ?? schoolId!;
+  const socioId = socioIdProp ?? playerId!;
 
   const colRef = collection(
     firestore,
-    `schools/${schoolId}/playerVideos`
+    `subcomisiones/${subcomisionId}/socioVideos`
   );
   const videoRef = doc(colRef);
   const videoId = videoRef.id;
 
   const ext = file.name.split(".").pop()?.toLowerCase() || "webm";
-  const storagePath = `schools/${schoolId}/players/${playerId}/videos/${videoId}.${ext}`;
+  const storagePath = `subcomisiones/${subcomisionId}/socios/${socioId}/videos/${videoId}.${ext}`;
   const storageRef = ref(storage, storagePath);
 
   await new Promise<void>((resolve, reject) => {
@@ -71,7 +81,7 @@ export async function uploadPlayerVideo(
   const url = await getDownloadURL(storageRef);
 
   await setDoc(videoRef, {
-    playerId,
+    playerId: socioId, // compat Firestore
     storagePath,
     url,
     ...(title != null && title !== "" && { title }),
@@ -93,6 +103,8 @@ export function uploadPlayerVideoWithProgress(
     storage,
     firestore,
     userId,
+    subcomisionId: subcomisionIdProp,
+    socioId: socioIdProp,
     schoolId,
     playerId,
     file,
@@ -100,16 +112,18 @@ export function uploadPlayerVideoWithProgress(
     description,
     skills,
   } = params;
+  const subcomisionId = subcomisionIdProp ?? schoolId!;
+  const socioId = socioIdProp ?? playerId!;
 
   const colRef = collection(
     firestore,
-    `schools/${schoolId}/playerVideos`
+    `subcomisiones/${subcomisionId}/socioVideos`
   );
   const videoRef = doc(colRef);
   const videoId = videoRef.id;
 
   const ext = file.name.split(".").pop()?.toLowerCase() || "webm";
-  const storagePath = `schools/${schoolId}/players/${playerId}/videos/${videoId}.${ext}`;
+  const storagePath = `subcomisiones/${subcomisionId}/socios/${socioId}/videos/${videoId}.${ext}`;
   const storageRef = ref(storage, storagePath);
 
   return new Promise((resolve, reject) => {
@@ -124,7 +138,7 @@ export function uploadPlayerVideoWithProgress(
       async () => {
         const url = await getDownloadURL(storageRef);
         await setDoc(videoRef, {
-          playerId,
+          playerId: socioId, // compat Firestore
           storagePath,
           url,
           ...(title != null && title !== "" && { title }),

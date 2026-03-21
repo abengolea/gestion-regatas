@@ -1,6 +1,6 @@
 # Mensualidades de Escuelas a la Plataforma
 
-Sistema de control de pagos mensuales que las escuelas adheridas realizan a Escuelas River.
+Sistema de control de pagos mensuales que las escuelas adheridas realizan a Regatas+.
 
 ## Resumen
 
@@ -26,7 +26,7 @@ Para que las escuelas paguen a la plataforma, necesitás un **access token** de 
 6. En la app de Mercado Pago, configurar la **notification_url** para webhooks:
    - Producción: `https://escuelariver--lexflow-consultas.us-east4.hosted.app/api/payments/webhook/mercadopago-platform`
 
-### 2. Configuración global (Super Admin)
+### 2. Configuración global (Gerente del Club)
 
 En **Panel → Mensualidades → Configuración global**:
 
@@ -49,7 +49,7 @@ En **Panel → Mensualidades → Tarifas por escuela**:
 2. Clic en **Pagar ahora** → se genera un link de Mercado Pago (Checkout Pro).
 3. La escuela paga con tarjeta, etc.
 4. Mercado Pago envía webhook a `/api/payments/webhook/mercadopago-platform`.
-5. El pago se registra en `schoolFeePayments` y el aviso desaparece.
+5. El pago se registra en `clubFeePayments` y el aviso desaparece.
 
 ## Webhook y URLs
 
@@ -57,17 +57,17 @@ En la app de Mercado Pago (misma o distinta a la de OAuth), la **notification_ur
 
 - Producción: `https://escuelariver--lexflow-consultas.us-east4.hosted.app/api/payments/webhook/mercadopago-platform`
 
-No requiere `schoolId` en query porque el `external_reference` es `platform_fee|schoolId|period`.
+No requiere `subcomisionId` en query porque el `external_reference` es `platform_fee|schoolId|period`.
 
 ## Colecciones Firestore
 
 - `platformConfig/platformFeeConfig`: configuración global.
-- `schools/{schoolId}/schoolFeeConfig/default`: tarifa y bonificación por escuela.
-- `schoolFeePayments`: pagos de mensualidades (creados por API/webhook).
+- `subcomisiones/{schoolId}/clubFeeConfig/default`: tarifa y bonificación por escuela.
+- `clubFeePayments`: pagos de mensualidades (creados por API/webhook).
 
 ## Cloud Functions
 
-- `enforceSchoolFeeSuspensions`: job diario (7:00 Argentina) que suspende escuelas en mora según `delinquencyDaysSuspension`.
+- `enforceClubFeeSuspensions`: job diario (7:00 Argentina) que suspende escuelas en mora según `delinquencyDaysSuspension`.
 
 ## Bonificar San Nicolás
 

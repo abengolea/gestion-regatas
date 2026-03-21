@@ -34,13 +34,13 @@ import { useCollection } from "@/firebase";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Banknote, Pencil, Download } from "lucide-react";
-import type { Payment, Player } from "@/lib/types";
+import type { Payment, Socio } from "@/lib/types";
 
 /** Pago con nombre de jugador enriquecido por la API */
 type PaymentWithPlayerName = Payment & { playerName?: string };
 
 interface PaymentsTabProps {
-  schoolId: string;
+  subcomisionId: string;
   getToken: () => Promise<string | null>;
 }
 
@@ -93,7 +93,7 @@ function getYears(): number[] {
   return years;
 }
 
-export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
+export function PaymentsTab({ subcomisionId, getToken }: PaymentsTabProps) {
   const [payments, setPayments] = useState<PaymentWithPlayerName[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -125,17 +125,17 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
   const [exportingCsv, setExportingCsv] = useState(false);
   const { toast } = useToast();
 
-  const { data: players } = useCollection<Player>(
-    schoolId ? `schools/${schoolId}/players` : "",
+  const { data: socios } = useCollection<Socio>(
+    subcomisionId ? `subcomisiones/${subcomisionId}/socios` : "",
     { orderBy: ["lastName", "asc"] }
   );
-  const activePlayers = (players ?? []).filter((p) => !p.archived);
+  const activeSocios = (socios ?? []).filter((p: Socio) => !p.archived);
 
   const fetchConfig = useCallback(async () => {
     const token = await getToken();
-    if (!token || !schoolId) return;
+    if (!token || !subcomisionId) return;
     try {
-      const res = await fetch(`/api/payments/config?schoolId=${schoolId}`, {
+      const res = await fetch(`/api/payments/config?schoolId=${subcomisionId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -147,13 +147,13 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
     } catch {
       // ignore
     }
-  }, [schoolId, getToken]);
+  }, [subcomisionId, getToken]);
 
   const fetchPayments = useCallback(async () => {
     setLoading(true);
     const token = await getToken();
     if (!token) return;
-    const params = new URLSearchParams({ schoolId });
+    const params = new URLSearchParams({ subcomisionId });
     if (filters.concept === "inscripcion") {
       params.set("concept", "inscripcion");
     } else if (filters.concept === "monthly" && filters.period) {
@@ -193,7 +193,7 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
     } finally {
       setLoading(false);
     }
-  }, [schoolId, filters.concept, filters.period, filters.status, filters.provider, getToken]);
+  }, [subcomisionId, filters.concept, filters.period, filters.status, filters.provider, getToken]);
 
   useEffect(() => {
     fetchPayments();
@@ -205,7 +205,7 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
 
   // Al seleccionar jugador + tipo ropa: chequear cuántas cuotas configuradas y cuáles pagadas
   const fetchClothingPending = useCallback(async () => {
-    if (manualPaymentType !== "clothing" || !manualPlayerId || !schoolId) {
+    if (manualPaymentType !== "clothing" || !manualPlayerId || !subcomisionId) {
       setClothingPendingForPlayer([]);
       setClothingConfigured(false);
       return;
@@ -219,7 +219,7 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
     }
     try {
       const res = await fetch(
-        `/api/payments/clothing-pending?schoolId=${encodeURIComponent(schoolId)}&playerId=${encodeURIComponent(manualPlayerId)}`,
+        `/api/payments/clothing-pending?schoolId=${encodeURIComponent(subcomisionId)}&socioId=${encodeURIComponent(manualPlayerId)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.ok) {
@@ -236,7 +236,7 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
     } finally {
       setClothingPendingLoading(false);
     }
-  }, [manualPaymentType, manualPlayerId, schoolId, getToken]);
+  }, [manualPaymentType, manualPlayerId, subcomisionId, getToken]);
 
   useEffect(() => {
     fetchClothingPending();
@@ -283,7 +283,7 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
         },
         body: JSON.stringify({
           playerId: manualPlayerId,
-          schoolId,
+          schoolId: subcomisionId,
           period,
           amount,
           currency: "ARS",
@@ -318,7 +318,7 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
   };
 
   const handleEditPayment = async () => {
-    if (!editPayment || !schoolId || !editNewPeriod) return;
+    if (!editPayment || !subcomisionId || !editNewPeriod) return;
     if (editPayment.period === editNewPeriod) {
       setEditDialogOpen(false);
       return;
@@ -339,7 +339,7 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
         },
         body: JSON.stringify({
           paymentId: editPayment.id,
-          schoolId,
+          subcomisionId,
           newPeriod: editNewPeriod,
         }),
       });
@@ -395,7 +395,7 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
     }
     setExportingCsv(true);
     try {
-      const params = new URLSearchParams({ schoolId, limit: "10000", offset: "0" });
+      const params = new URLSearchParams({ subcomisionId, limit: "10000", offset: "0" });
       if (filters.period) params.set("period", filters.period);
       if (filters.status) params.set("status", filters.status);
       if (filters.provider) params.set("provider", filters.provider);
@@ -744,7 +744,7 @@ export function PaymentsTab({ schoolId, getToken }: PaymentsTabProps) {
                   <SelectValue placeholder="Elegí un jugador" />
                 </SelectTrigger>
                 <SelectContent>
-                  {activePlayers.map((p) => (
+                  {activeSocios.map((p: Socio) => (
                     <SelectItem key={p.id} value={p.id}>
                       {[p.firstName, p.lastName].filter(Boolean).join(" ")}
                     </SelectItem>

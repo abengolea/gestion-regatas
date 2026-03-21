@@ -15,8 +15,8 @@ const periodSchema = z.string().refine(
 
 export const createPaymentIntentSchema = z.object({
   provider: z.enum(['mercadopago', 'dlocal']),
-  playerId: z.string().min(1, 'playerId requerido'),
-  schoolId: z.string().min(1, 'schoolId requerido'),
+  socioId: z.string().min(1, 'playerId requerido'),
+  subcomisionId: z.string().min(1, 'schoolId requerido'),
   period: periodSchema,
   /** Monto opcional: el servidor lo calcula desde la config (seguridad). */
   amount: z.number().positive('Monto debe ser positivo').optional(),

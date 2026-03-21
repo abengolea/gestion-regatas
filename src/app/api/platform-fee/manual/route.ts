@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import {
-  findApprovedSchoolFeePayment,
+  findApprovedClubFeePayment,
   createSchoolFeePayment,
   getOrCreatePlatformFeeConfig,
   getSchoolMonthlyAmount,
@@ -15,7 +15,7 @@ import {
 import { verifySuperAdmin } from '@/lib/auth-server';
 
 const BodySchema = z.object({
-  schoolId: z.string().min(1),
+  subcomisionId: z.string().min(1),
   period: z.string().regex(/^\d{4}-\d{2}$/, 'Formato YYYY-MM'),
   amount: z.number().min(0).optional(),
   lateFeeAmount: z.number().min(0).optional(),
@@ -37,10 +37,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const { schoolId, period } = parsed.data;
+    const schoolId = parsed.data.subcomisionId;
+    const { period } = parsed.data;
     const db = getAdminFirestore();
 
-    const existing = await findApprovedSchoolFeePayment(db, schoolId, period);
+    const existing = await findApprovedClubFeePayment(db, schoolId, period);
     if (existing) {
       return NextResponse.json(
         { error: 'Esta mensualidad ya está pagada' },

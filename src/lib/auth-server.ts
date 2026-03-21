@@ -20,11 +20,11 @@ export async function verifyIdToken(authHeader: string | null): Promise<{ uid: s
 }
 
 /**
- * Verifica que el usuario sea admin de la escuela (school_admin) o super admin.
+ * Verifica que el usuario sea admin de la escuela (admin_subcomision) o super admin.
  * Necesita consultar Firestore para el rol - por ahora retornamos true si hay token válido.
- * TODO: Consultar schools/{schoolId}/users/{uid} y platformUsers para super_admin
+ * TODO: Consultar subcomisiones/{subcomisionId}/users/{uid} y platformUsers para gerente_club
  */
-export async function isSchoolAdminOrSuperAdmin(
+export async function isSubcomisionAdminOrSuperAdmin(
   _uid: string,
   _schoolId: string
 ): Promise<boolean> {
@@ -43,8 +43,8 @@ export async function verifySuperAdmin(authHeader: string | null): Promise<{ uid
   const { getAdminFirestore } = await import('./firebase-admin');
   const db = getAdminFirestore();
   const platformSnap = await db.collection('platformUsers').doc(auth.uid).get();
-  const data = platformSnap.data() as { super_admin?: boolean } | undefined;
-  const isSuperAdmin = data?.super_admin === true || auth.email === 'abengolea1@gmail.com';
+  const data = platformSnap.data() as { super_admin?: boolean; gerente_club?: boolean } | undefined;
+  const isSuperAdmin = data?.super_admin === true || data?.gerente_club === true || auth.email === 'abengolea1@gmail.com';
 
   if (!isSuperAdmin) return null;
   return auth;

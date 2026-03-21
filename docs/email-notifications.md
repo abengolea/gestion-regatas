@@ -27,7 +27,7 @@ Este documento lista las notificaciones que el sistema envía o puede enviar por
 
 Todos los correos salen con la plantilla definida en `src/lib/email.ts`:
 
-- **buildEmailHtml(contentHtml, options?)**: envuelve el contenido en HTML con estilo Escuelas River (cabecera roja, cuerpo legible, fuente system-ui).
+- **buildEmailHtml(contentHtml, options?)**: envuelve el contenido en HTML con estilo Regatas+ (cabecera roja, cuerpo legible, fuente system-ui).
 - **sendMailDoc(firestore, payload)**: encola un correo en la colección `mail` (to, subject, html, text).
 
 Para cualquier nueva notificación:

@@ -25,7 +25,7 @@ import { getFieldLabel, type PhysicalAssessmentConfigPartial } from "@/lib/physi
 
 interface PhysicalAssessmentDetailDisplayProps {
   assessment: PhysicalAssessment;
-  schoolId: string;
+  subcomisionId: string;
   physicalConfig?: PhysicalAssessmentConfig | null;
   onDeleted: () => void;
   onEditClick: (assessment: PhysicalAssessment) => void;
@@ -33,7 +33,7 @@ interface PhysicalAssessmentDetailDisplayProps {
 
 export function PhysicalAssessmentDetailDisplay({
   assessment,
-  schoolId,
+  subcomisionId,
   physicalConfig,
   onDeleted,
   onEditClick,
@@ -45,12 +45,12 @@ export function PhysicalAssessmentDetailDisplay({
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await deleteDoc(doc(firestore, `schools/${schoolId}/physicalAssessments/${assessment.id}`));
+      await deleteDoc(doc(firestore, `subcomisiones/${subcomisionId}/physicalAssessments/${assessment.id}`));
       toast({ title: "Evaluación física eliminada" });
       onDeleted();
     } catch (err) {
       errorEmitter.emit("permission-error", new FirestorePermissionError({
-        path: `schools/${schoolId}/physicalAssessments/${assessment.id}`,
+        path: `subcomisiones/${subcomisionId}/physicalAssessments/${assessment.id}`,
         operation: "delete",
       }));
       toast({ variant: "destructive", title: "Error al eliminar" });

@@ -54,7 +54,7 @@ export default function AuditLogPage() {
     "school.create": "Crear escuela",
     "school.update": "Actualizar escuela",
     "school.status_change": "Cambiar estado escuela",
-    "platform_user.promote_super_admin": "Dar super admin",
+    "platform_user.promote_gerente_club": "Dar super admin",
     "platform_user.demote_super_admin": "Quitar super admin",
     "platform_config.update": "Actualizar configuración",
     "physical_assessment_template.accept_field": "Aceptar test en plantilla física",
@@ -116,7 +116,7 @@ export default function AuditLogPage() {
                     <TableCell className="font-medium">{e.userEmail}</TableCell>
                     <TableCell>{actionLabels[e.action] ?? e.action}</TableCell>
                     <TableCell>{e.resourceType}</TableCell>
-                    <TableCell>{e.schoolId ?? "-"}</TableCell>
+                    <TableCell>{e.subcomisionId ?? "-"}</TableCell>
                     <TableCell className="text-muted-foreground max-w-[200px] truncate" title={e.details}>
                       {e.details ?? "-"}
                     </TableCell>

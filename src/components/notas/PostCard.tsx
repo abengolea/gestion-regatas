@@ -10,7 +10,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
-  const href = `/escuelas/${post.schoolSlug}/notas/${post.slug}`;
+  const href = `/escuelas/${post.subcomisionSlug}/notas/${post.slug}`;
 
   return (
     <article className="group rounded-lg border bg-card overflow-hidden transition-shadow hover:shadow-md">

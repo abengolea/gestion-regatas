@@ -1,4 +1,4 @@
-# Escuelas River App
+# Regatas+ App
 
 Aplicación web para gestión y seguimiento de jugadores de escuelas de fútbol.
 

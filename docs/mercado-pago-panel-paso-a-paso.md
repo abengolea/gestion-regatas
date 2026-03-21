@@ -8,7 +8,7 @@ Guía para encontrar en el panel de Mercado Pago las configuraciones de **URLs d
 
 1. Abrí **[https://www.mercadopago.com.ar/developers/panel/app](https://www.mercadopago.com.ar/developers/panel/app)**
 2. Iniciá sesión con la cuenta de **Notificassrl** (o la que use tu app)
-3. En la lista de aplicaciones, hacé clic en la **tarjeta de tu aplicación** (Escuelas River, Client ID `3983794964230965`)
+3. En la lista de aplicaciones, hacé clic en la **tarjeta de tu aplicación** (Regatas+, Client ID `3983794964230965`)
 
 ---
 
@@ -43,7 +43,7 @@ Para que Mercado Pago avise cuando un pago se aprueba.
    ```
    https://escuelariver--lexflow-consultas.us-east4.hosted.app/api/payments/webhook/mercadopago
    ```
-   ⚠️ Esta ruta espera `?schoolId=xxx` – normalmente se usa la `notification_url` por preferencia, no el webhook global.
+   ⚠️ Esta ruta espera `?subcomisionId=xxx` – normalmente se usa la `notification_url` por preferencia, no el webhook global.
 
 5. En **Eventos**, marcá **"Pagos"** (o "payment")
 6. Clic en **"Guardar"**

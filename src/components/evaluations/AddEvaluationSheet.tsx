@@ -120,8 +120,12 @@ const socioEmotionalSkills: { name: keyof EvaluationFormValues, label: string }[
 export type EvaluationSummaryForAI = { date: Date; coachComments: string };
 
 interface AddEvaluationSheetProps {
-    playerId: string;
-    schoolId: string;
+    socioId?: string;
+    subcomisionId?: string;
+    /** @deprecated Use socioId */
+    playerId?: string;
+    /** @deprecated Use subcomisionId */
+    schoolId?: string;
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     /** Nombre del jugador (para "Mejorar con IA"). */
@@ -235,7 +239,9 @@ function RubricCommentField({
     );
 }
 
-export function AddEvaluationSheet({ playerId, schoolId, isOpen, onOpenChange, playerName, evaluationsSummary = [], editingEvaluation = null }: AddEvaluationSheetProps) {
+export function AddEvaluationSheet({ socioId: socioIdProp, subcomisionId: subcomisionIdProp, playerId, schoolId, isOpen, onOpenChange, playerName, evaluationsSummary = [], editingEvaluation = null }: AddEvaluationSheetProps) {
+    const socioId = socioIdProp ?? playerId;
+    const subcomisionId = subcomisionIdProp ?? schoolId;
     const firestore = useFirestore();
     const { toast } = useToast();
     const { profile } = useUserProfile();
@@ -322,7 +328,7 @@ export function AddEvaluationSheet({ playerId, schoolId, isOpen, onOpenChange, p
         };
 
         if (isEditMode && editingEvaluation) {
-            const docRef = doc(firestore, `schools/${schoolId}/evaluations/${editingEvaluation.id}`);
+            const docRef = doc(firestore, `subcomisiones/${subcomisionId}/evaluations/${editingEvaluation.id}`);
             try {
                 await updateDoc(docRef, payload);
                 toast({ title: "Evaluación actualizada", description: "Los cambios se han guardado correctamente." });
@@ -330,7 +336,7 @@ export function AddEvaluationSheet({ playerId, schoolId, isOpen, onOpenChange, p
                 onOpenChange(false);
             } catch {
                 errorEmitter.emit("permission-error", new FirestorePermissionError({
-                    path: `schools/${schoolId}/evaluations/${editingEvaluation.id}`,
+                    path: `subcomisiones/${subcomisionId}/evaluations/${editingEvaluation.id}`,
                     operation: "update",
                     requestResourceData: payload,
                 }));
@@ -344,7 +350,8 @@ export function AddEvaluationSheet({ playerId, schoolId, isOpen, onOpenChange, p
         }
 
         const evaluationData = {
-            playerId,
+            socioId,
+            playerId: socioId, // compat legacy
             date: Timestamp.now(),
             ...payload,
             createdAt: Timestamp.now(),
@@ -352,7 +359,7 @@ export function AddEvaluationSheet({ playerId, schoolId, isOpen, onOpenChange, p
             evaluatedByName: profile.displayName?.trim() || profile.email || "Entrenador",
         };
 
-        const evaluationsCollectionRef = collection(firestore, `schools/${schoolId}/evaluations`);
+        const evaluationsCollectionRef = collection(firestore, `subcomisiones/${subcomisionId}/evaluations`);
         try {
             await addDoc(evaluationsCollectionRef, evaluationData);
             toast({
@@ -364,13 +371,13 @@ export function AddEvaluationSheet({ playerId, schoolId, isOpen, onOpenChange, p
             // Enviar mail en segundo plano para no bloquear la UI
             (async () => {
                 try {
-                    const playerRef = doc(firestore, `schools/${schoolId}/players/${playerId}`);
+                    const playerRef = doc(firestore, `subcomisiones/${subcomisionId}/socios/${socioId}`);
                     const playerSnap = await getDoc(playerRef);
-                    const playerData = playerSnap.data();
-                    const playerEmail = playerData?.email?.trim?.();
-                    const firstName = playerData?.firstName ?? playerName ?? "jugador";
+                    const socioData = playerSnap.data();
+                    const playerEmail = socioData?.email?.trim?.();
+                    const firstName = socioData?.firstName ?? playerName ?? "jugador";
                     if (playerEmail) {
-                        const subject = "Nueva evaluación - Escuelas River";
+                        const subject = "Nueva evaluación - Regatas+";
                         const contentHtml = `<p>Hola <strong>${escapeHtml(firstName)}</strong>,</p><p>Tu entrenador cargó una nueva evaluación. Entrá al panel para verla.</p><p><a href="${typeof window !== "undefined" ? window.location.origin : ""}/dashboard" style="color: hsl(var(--primary)); font-weight: bold;">Ver mi perfil</a></p>`;
                         const html = buildEmailHtml(contentHtml, {
                             title: "Escuelas River",
@@ -385,7 +392,7 @@ export function AddEvaluationSheet({ playerId, schoolId, isOpen, onOpenChange, p
             })();
         } catch {
             errorEmitter.emit("permission-error", new FirestorePermissionError({
-                path: `schools/${schoolId}/evaluations`,
+                path: `subcomisiones/${subcomisionId}/evaluations`,
                 operation: "create",
                 requestResourceData: evaluationData,
             }));

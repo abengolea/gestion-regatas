@@ -24,51 +24,58 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Loader2, Edit } from "lucide-react";
-import { useFirestore, useUserProfile } from "@/firebase";
+import { useFirestore, useUserProfile, useCollection } from "@/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import { writeAuditLog } from "@/lib/audit";
 import { useToast } from "@/hooks/use-toast";
-import type { School } from "@/lib/types";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { AddSubcomisionUserDialog } from "./AddSchoolUserDialog";
+import { EditSubcomisionUserDialog } from "./EditSchoolUserDialog";
+import type { Subcomision, SubcomisionUser } from "@/lib/types";
 
 const schoolSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
-  city: z.string().min(2, "La ciudad es requerida."),
-  province: z.string().min(2, "La provincia es requerida."),
-  address: z.string().optional(),
 });
 
-interface EditSchoolDialogProps {
-  school: School;
+interface EditSubcomisionDialogProps {
+  school: Subcomision;
   children: React.ReactNode; // To use as a trigger
 }
 
-export function EditSchoolDialog({ school, children }: EditSchoolDialogProps) {
+const ROLE_LABELS: Record<SubcomisionUser["role"], string> = {
+  admin_subcomision: "Administrador",
+  encargado_deportivo: "Entrenador",
+  editor: "Editor",
+  viewer: "Visor",
+  player: "Jugador",
+};
+
+export function EditSubcomisionDialog({ school, children }: EditSubcomisionDialogProps) {
   const [open, setOpen] = useState(false);
   const firestore = useFirestore();
   const { user } = useUserProfile();
   const { toast } = useToast();
+  const { data: users, loading: usersLoading } = useCollection<SubcomisionUser>(
+    open ? `subcomisiones/${school.id}/users` : "",
+    { orderBy: ["displayName", "asc"] }
+  );
 
   const form = useForm<z.infer<typeof schoolSchema>>({
     resolver: zodResolver(schoolSchema),
     defaultValues: {
       name: school.name,
-      city: school.city,
-      province: school.province,
-      address: school.address || "",
     },
   });
 
   const { isSubmitting } = form.formState;
 
   async function onSubmit(values: z.infer<typeof schoolSchema>) {
-    const schoolRef = doc(firestore, 'schools', school.id);
+    const schoolRef = doc(firestore, 'subcomisiones', school.id);
     
     try {
       await updateDoc(schoolRef, {
         name: values.name,
-        city: values.city,
-        province: values.province,
-        address: values.address,
       });
 
       if (user?.uid && user?.email) {
@@ -76,14 +83,14 @@ export function EditSchoolDialog({ school, children }: EditSchoolDialogProps) {
           action: "school.update",
           resourceType: "school",
           resourceId: school.id,
-          schoolId: school.id,
+          subcomisionId: school.id,
           details: values.name,
         });
       }
 
       toast({
         title: "¡Escuela actualizada!",
-        description: `Los datos de "${values.name}" han sido guardados.`,
+        description: `Los datos de la subcomisión "${values.name}" han sido guardados.`,
       });
       setOpen(false);
 
@@ -101,67 +108,67 @@ export function EditSchoolDialog({ school, children }: EditSchoolDialogProps) {
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Editar Escuela</DialogTitle>
+          <DialogTitle>Editar Subcomisión</DialogTitle>
           <DialogDescription>
-            Modifica los datos de la sede. Los cambios se aplicarán inmediatamente.
+            Modifica los datos de la subcomisión.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
                 <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Nombre de la Sede</FormLabel>
+                    <FormLabel>Nombre de la Subcomisión</FormLabel>
                     <FormControl>
-                        <Input placeholder="Ej: Escuela de River - Córdoba" {...field} />
+                        <Input placeholder="Ej: Remo U17" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
                 />
-                <FormField
-                control={form.control}
-                name="province"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Provincia</FormLabel>
-                    <FormControl>
-                        <Input placeholder="Córdoba" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="city"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Ciudad</FormLabel>
-                    <FormControl>
-                        <Input placeholder="Córdoba Capital" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Dirección (Opcional)</FormLabel>
-                    <FormControl>
-                        <Input placeholder="Av. Siempre Viva 742" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
+
+            <Separator />
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-foreground">Responsables</h3>
+                <AddSubcomisionUserDialog subcomisionId={school.id} />
+              </div>
+              {usersLoading ? (
+                <p className="text-sm text-muted-foreground">Cargando...</p>
+              ) : !users || users.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay responsables asignados.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {users.map((u) => (
+                    <li
+                      key={u.id}
+                      className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{u.displayName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant={u.role === "admin_subcomision" ? "default" : "secondary"}>
+                          {ROLE_LABELS[u.role] ?? u.role}
+                        </Badge>
+                        <EditSubcomisionUserDialog subcomisionId={school.id} user={u}>
+                          <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Editar rol</span>
+                          </Button>
+                        </EditSubcomisionUserDialog>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>

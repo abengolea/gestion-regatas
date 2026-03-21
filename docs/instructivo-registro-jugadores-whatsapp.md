@@ -1,4 +1,4 @@
-# Instructivo: Registro de Jugadores — Escuelas River
+# Instructivo: Registro de Jugadores — Regatas+
 
 **Uso:** Copiá el texto de abajo y enviálo por WhatsApp a jugadores o padres/tutores.
 

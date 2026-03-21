@@ -8,28 +8,28 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ArrowUpRight, PlusCircle, Users, School, ClipboardCheck } from "lucide-react";
+import { ArrowUpRight, PlusCircle, Users, Building2, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection, useUserProfile, useDoc } from "@/firebase";
-import type { Player, School as SchoolType } from "@/lib/types";
+import type { Socio, Subcomision as SchoolType } from "@/lib/types";
 import { getBirthYearLabel } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import React, { useMemo } from "react";
 
-export function SchoolAdminDashboard() {
+export function SubcomisionAdminDashboard() {
   const { profile, isReady, activeSchoolId } = useUserProfile();
   
   const { data: school, loading: schoolLoading } = useDoc<SchoolType>(
-    activeSchoolId ? `schools/${activeSchoolId}` : ''
+    activeSchoolId ? `subcomisiones/${activeSchoolId}` : ''
   );
 
-  const { data: players, loading: playersLoading } = useCollection<Player>(
-      activeSchoolId ? `schools/${activeSchoolId}/players` : '',
+  const { data: socios, loading: playersLoading } = useCollection<Socio>(
+      activeSchoolId ? `subcomisiones/${activeSchoolId}/socios` : '',
       { orderBy: ['createdAt', 'desc'] }
   );
 
-  const activePlayers = useMemo(() => (players ?? []).filter((p) => !p.archived), [players]);
+  const activePlayers = useMemo(() => (socios ?? []).filter((p) => !p.archived), [socios]);
 
   // Jugadores más recientes (ya vienen ordenados por createdAt desc desde Firestore)
   const playersByCategory = useMemo(() => {
@@ -65,7 +65,7 @@ export function SchoolAdminDashboard() {
              <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Sede</CardTitle>
-                    <School className="h-4 w-4 text-muted-foreground" />
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                      <Skeleton className="h-8 w-3/4" />
@@ -100,11 +100,11 @@ export function SchoolAdminDashboard() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between space-y-2">
         <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Panel de {profile?.role === 'school_admin' ? 'Administración' : 'Entrenador'}</h1>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Panel de {profile?.role === 'admin_subcomision' ? 'Administración' : 'Entrenador'}</h1>
             <p className="text-muted-foreground">Bienvenido, {profile?.displayName}.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant={profile?.role === 'coach' ? 'default' : 'outline'}>
+          <Button asChild variant={profile?.role === 'encargado_deportivo' ? 'default' : 'outline'}>
             <Link href="/dashboard/attendance">
                 <ClipboardCheck className="mr-2 h-4 w-4" />
                 Tomar asistencia
@@ -132,7 +132,7 @@ export function SchoolAdminDashboard() {
             </CardContent>
           </Card>
         </Link>
-        <Link href={activeSchoolId ? `/dashboard/players?schoolId=${activeSchoolId}` : "/dashboard/players"}>
+        <Link href={activeSchoolId ? `/dashboard/players?subcomisionId=${activeSchoolId}` : "/dashboard/players"}>
           <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Jugadores Activos</CardTitle>
@@ -149,7 +149,7 @@ export function SchoolAdminDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Sede Actual</CardTitle>
-            <School className="h-4 w-4 text-muted-foreground" />
+            <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{school?.name || 'Sede no encontrada'}</div>
@@ -184,10 +184,10 @@ export function SchoolAdminDashboard() {
                 <div key={player.id} className="flex items-center">
                   <Avatar className="h-9 w-9">
                     <AvatarImage src={player.photoUrl} alt="Avatar" data-ai-hint="person portrait" />
-                    <AvatarFallback>{player.firstName[0]}{player.lastName[0]}</AvatarFallback>
+                    <AvatarFallback>{(player.firstName ?? "")[0]}{(player.lastName ?? "")[0]}</AvatarFallback>
                   </Avatar>
                   <div className="ml-4 space-y-1">
-                    <p className="text-sm font-medium leading-none">{player.firstName} {player.lastName}</p>
+                    <p className="text-sm font-medium leading-none">{player.firstName ?? ""} {player.lastName ?? ""}</p>
                     <p className="text-sm text-muted-foreground">{category}</p>
                   </div>
                   <Link href={`/dashboard/players/${player.id}?schoolId=${activeSchoolId}`} className="ml-auto">

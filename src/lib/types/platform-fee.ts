@@ -1,9 +1,10 @@
 /**
  * Tipos para el módulo de mensualidades de escuelas a la plataforma.
- * Las escuelas pagan una cuota mensual a Escuelas River; el super admin define tarifas y mora.
+ * Las escuelas pagan una cuota mensual a Regatas+; el super admin define tarifas y mora.
  */
 
-export type SchoolFeePaymentStatus = 'pending' | 'approved' | 'rejected' | 'refunded';
+export type ClubFeePaymentStatus = 'pending' | 'approved' | 'rejected' | 'refunded';
+export type SchoolFeePaymentStatus = ClubFeePaymentStatus;
 
 /** Configuración global de mensualidades (super admin). Almacenada en platformConfig/platformFeeConfig */
 export interface PlatformFeeConfig {
@@ -23,8 +24,8 @@ export interface PlatformFeeConfig {
   updatedBy: string;
 }
 
-/** Configuración de mensualidad por escuela. Almacenada en schools/{schoolId}/schoolFeeConfig/default */
-export interface SchoolFeeConfig {
+/** Configuración de mensualidad por escuela. Almacenada en subcomisiones/{subcomisionId}/clubFeeConfig/default */
+export interface ClubFeeConfig {
   /** Tarifa mensual en la moneda configurada. 0 = sin cargo (bonificada). */
   monthlyAmount: number;
   /** Si true, la escuela está bonificada (no paga). Ej: San Nicolás. */
@@ -35,7 +36,7 @@ export interface SchoolFeeConfig {
   updatedBy: string;
 }
 
-/** Pago de mensualidad de escuela a plataforma. Colección schoolFeePayments */
+/** Pago de mensualidad de escuela a plataforma. Colección clubFeePayments */
 export interface SchoolFeePayment {
   id: string;
   schoolId: string;

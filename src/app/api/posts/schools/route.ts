@@ -1,5 +1,5 @@
 /**
- * GET /api/posts/schools - Lista escuelas para el usuario (para selector en panel notas)
+ * GET /api/posts/subcomisiones - Lista escuelas para el usuario (para selector en panel notas)
  */
 
 import { NextResponse } from "next/server";

@@ -1,6 +1,6 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
-# Proyecto: Regatas+ (lexflow-consultas)
+# Proyecto Firebase: regatasadmin-3c6ee | Backend: gestion-regatas
 
 runConfig:
   maxInstances: 1
@@ -11,43 +11,40 @@ runConfig:
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     secret: firebase-api-key
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    value: lexflow-consultas.firebaseapp.com
+    value: regatasadmin-3c6ee.firebaseapp.com
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: lexflow-consultas
+    value: regatasadmin-3c6ee
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: lexflow-consultas.firebasestorage.app
+    value: regatasadmin-3c6ee.firebasestorage.app
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    value: "664196918383"
+    value: "504691770185"
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: "1:664196918383:web:e58546257d0d98e9fdf19a"
+    value: "1:504691770185:web:cb87f2964c9c24e58e1098"
     availability:
       - BUILD
       - RUNTIME
   # URL base de la app en producción
   - variable: NEXT_PUBLIC_APP_URL
-    value: "https://escuelariver--lexflow-consultas.us-east4.hosted.app"
+    value: "https://gestion-regatas--regatasadmin-3c6ee.us-east4.hosted.app"
     availability:
       - BUILD
       - RUNTIME
-  # Mercado Pago OAuth (crear secrets: mercadopago-client-secret, mercadopago-platform-access-token)
-  - variable: MERCADOPAGO_CLIENT_ID
-    value: "5150882001064843"
-    availability:
-      - RUNTIME
-  - variable: MERCADOPAGO_CLIENT_SECRET
-    secret: mercadopago-client-secret
-  - variable: MERCADOPAGO_PLATFORM_ACCESS_TOKEN
-    secret: mercadopago-platform-access-token
+  # Mercado Pago (cuando lo actives en Regatas): MERCADOPAGO_CLIENT_ID + secrets
+  # mercadopago-client-secret y mercadopago-platform-access-token vía
+  # firebase apphosting:secrets:set … y grantaccess al backend gestion-regatas.

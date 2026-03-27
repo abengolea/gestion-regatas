@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -10,11 +11,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Settings } from "lucide-react";
+import { Loader2, Settings, Headphones, Mail, History, UserX, ChevronRight } from "lucide-react";
 import { useFirestore, useUserProfile, useDoc } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import type { PlatformConfig } from "@/lib/types";
@@ -26,7 +26,7 @@ const CONFIG_DOC_ID = "settings";
 export default function PlatformConfigPage() {
   const router = useRouter();
   const firestore = useFirestore();
-  const { user, profile, isSuperAdmin, isReady } = useUserProfile();
+  const { user, isSuperAdmin, isReady } = useUserProfile();
   const { data: config, loading } = useDoc<PlatformConfig & { id: string }>(
     `platformConfig/${CONFIG_DOC_ID}`
   );
@@ -160,6 +160,58 @@ export default function PlatformConfigPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Herramientas y soporte</CardTitle>
+          <CardDescription>
+            Desde aquí accedés a tickets, prueba de correo (Trigger Email), registro de auditoría y
+            borrado de usuarios de prueba. Estas tres últimas ya no aparecen en el menú lateral.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Link
+            href="/dashboard/support/operator"
+            className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
+          >
+            <span className="flex items-center gap-3">
+              <Headphones className="h-5 w-5 text-muted-foreground" />
+              <span>Tickets de soporte</span>
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+          <Link
+            href="/dashboard/admin/test-email"
+            className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
+          >
+            <span className="flex items-center gap-3">
+              <Mail className="h-5 w-5 text-muted-foreground" />
+              <span>Probar correo (Trigger Email)</span>
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+          <Link
+            href="/dashboard/admin/audit"
+            className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
+          >
+            <span className="flex items-center gap-3">
+              <History className="h-5 w-5 text-muted-foreground" />
+              <span>Auditoría</span>
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+          <Link
+            href="/dashboard/admin/delete-test-users"
+            className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
+          >
+            <span className="flex items-center gap-3">
+              <UserX className="h-5 w-5 text-muted-foreground" />
+              <span>Borrar usuarios de prueba</span>
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -6,12 +6,13 @@ import { useDoc, useUserProfile } from "@/firebase";
 import type { Subcomision } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronLeft, Shield, Users } from "lucide-react";
+import { ChevronLeft, Shield, Users, SlidersHorizontal } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubcomisionUsersList } from "@/components/admin/SchoolUsersList";
 import { useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerTable } from "@/components/players/PlayerTable";
+import { SubcomisionModulesEditor } from "@/components/admin/SubcomisionModulesEditor";
 
 export default function SubcomisionAdminPage() {
   const params = useParams();
@@ -78,7 +79,11 @@ export default function SubcomisionAdminPage() {
         </Card>
       ) : (
         <Tabs defaultValue="users" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 gap-1 p-1 h-auto md:h-10 bg-card">
+            <TabsList
+              className={`grid w-full gap-1 p-1 h-auto md:h-10 bg-card ${
+                isSuperAdmin ? "grid-cols-3" : "grid-cols-2"
+              }`}
+            >
                 <TabsTrigger value="users" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 md:gap-2">
                     <Shield className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
                     <span className="truncate">Responsables</span>
@@ -87,6 +92,12 @@ export default function SubcomisionAdminPage() {
                     <Users className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
                     <span className="truncate">Jugadores</span>
                 </TabsTrigger>
+                {isSuperAdmin ? (
+                  <TabsTrigger value="modules" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 md:gap-2">
+                    <SlidersHorizontal className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                    <span className="truncate">Funcionalidades</span>
+                  </TabsTrigger>
+                ) : null}
             </TabsList>
             <TabsContent value="users">
                 <SubcomisionUsersList schoolId={schoolId} />
@@ -104,6 +115,11 @@ export default function SubcomisionAdminPage() {
                     </CardContent>
                 </Card>
             </TabsContent>
+            {isSuperAdmin ? (
+              <TabsContent value="modules">
+                <SubcomisionModulesEditor schoolId={schoolId} school={school} schoolLoading={schoolLoading} />
+              </TabsContent>
+            ) : null}
         </Tabs>
       )}
     </div>

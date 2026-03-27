@@ -107,7 +107,7 @@ export function EditSubcomisionUserDialog({ subcomisionId: subcomisionIdProp, sc
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Editar Usuario de Escuela</DialogTitle>
+          <DialogTitle>Editar usuario de la subcomisión</DialogTitle>
           <DialogDescription>
             Modifica el rol para este usuario.
           </DialogDescription>

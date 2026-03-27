@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -12,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, ChevronLeft } from "lucide-react";
 import { useUserProfile, useFirebase } from "@/firebase";
 import { getAuth } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -94,6 +95,12 @@ export default function TestEmailPage() {
 
   return (
     <div className="container max-w-lg py-6">
+      <Button variant="ghost" size="sm" className="mb-4 -ml-2 text-muted-foreground" asChild>
+        <Link href="/dashboard/admin/config">
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Configuración global
+        </Link>
+      </Button>
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">

@@ -106,7 +106,7 @@ export function AddSubcomisionUserDialog({ subcomisionId, schoolId }: { schoolId
 
         toast({
             title: "¡Usuario añadido!",
-            description: `${values.displayName} ha sido añadido a la escuela como ${values.role}.`,
+            description: `${values.displayName} fue añadido a la subcomisión con el rol indicado.`,
         });
         form.reset();
         setOpen(false);
@@ -123,9 +123,9 @@ export function AddSubcomisionUserDialog({ subcomisionId, schoolId }: { schoolId
             }
         } else {
             title = "Error de Base de Datos";
-            description = "No se pudo asignar el rol al usuario en la escuela. Verifica los permisos.";
+            description = "No se pudo asignar el rol al usuario en la subcomisión. Verificá los permisos.";
             const permissionError = new FirestorePermissionError({
-                path: `schools/${schoolId}/users/NEW_USER_ID`,
+                path: `subcomisiones/${id}/users/NEW_USER_ID`,
                 operation: 'create',
                 requestResourceData: { displayName: values.displayName, email: values.email, role: values.role },
             });
@@ -153,9 +153,9 @@ export function AddSubcomisionUserDialog({ subcomisionId, schoolId }: { schoolId
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Añadir Usuario a la Escuela</DialogTitle>
+          <DialogTitle>Añadir responsable a la subcomisión</DialogTitle>
           <DialogDescription>
-            Crea un nuevo usuario y asígnalo como responsable (administrador o entrenador) a esta escuela.
+            Creá un nuevo usuario y asignalo como responsable (administrador o entrenador) de esta subcomisión.
           </DialogDescription>
         </DialogHeader>
         

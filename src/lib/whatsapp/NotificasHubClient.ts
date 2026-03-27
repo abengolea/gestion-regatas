@@ -3,19 +3,21 @@
  * Regatas+ — No llama directo a Meta, todo pasa por el hub.
  */
 
+import { getNotificasHubInternalSecret } from './notificashub-env';
+
 export class NotificasHubClient {
   private static getBaseUrl(): string {
     return process.env.NOTIFICASHUB_URL ?? 'https://notificashub.com';
   }
 
   private static getSecret(): string {
-    return process.env.NOTIFICASHUB_INTERNAL_SECRET ?? '';
+    return getNotificasHubInternalSecret();
   }
 
   static async sendText(phone: string, text: string): Promise<void> {
     const secret = this.getSecret();
     if (!secret) {
-      console.warn('[NotificasHubClient] NOTIFICASHUB_INTERNAL_SECRET no configurado');
+      console.warn('[NotificasHubClient] NOTIFICASHUB_INTERNAL_SECRET o INTERNAL_SECRET no configurado');
       return;
     }
 
@@ -46,7 +48,7 @@ export class NotificasHubClient {
   ): Promise<void> {
     const secret = this.getSecret();
     if (!secret) {
-      console.warn('[NotificasHubClient] NOTIFICASHUB_INTERNAL_SECRET no configurado');
+      console.warn('[NotificasHubClient] NOTIFICASHUB_INTERNAL_SECRET o INTERNAL_SECRET no configurado');
       return;
     }
 

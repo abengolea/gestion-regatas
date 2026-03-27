@@ -1,19 +1,26 @@
 ---
-description: Identidad del proyecto Regatas+ (Club de Regatas San Nicolás)
+description: Identidad del proyecto Regatas+ (Club de Regatas San Nicolás) — NO MODIFICAR
 alwaysApply: true
 ---
 
 # Regatas+ — Identidad del proyecto
 
-**Este proyecto es Regatas+**, la plataforma del Club de Regatas San Nicolás (CRSN).
+**Este proyecto es Regatas+**, la plataforma del **Club de Regatas San Nicolás** (CRSN).
 
 ## Branding correcto
 
-- Nombre: Regatas+ / Club de Regatas San Nicolás
-- Deportes: remo, náutica, fútbol, hockey, básquet y más
+- Nombre: Regatas+ / Club de Regatas San Nicolás / Regatas
+- Colores: azul marino (crsn-navy) y naranja (crsn-orange)
+- Logo: EscudoCRSN (escudo del Club de Regatas)
+- Deportes: remo, náutica, fútbol, hockey, básquet, vóley y más
 - Slug: regatas-plus
 
-## No modificar
+## Prohibido
+
+- Usar branding de "Escuelas River" o "River" en texto visible al usuario
+- Cambiar la identidad a otro club o producto
+
+## No modificar sin consenso
 
 - La identidad del club (Regatas, CRSN)
 - Módulos reutilizados: Mercado Pago, videoteca, fichas médicas, Genkit/Gemini

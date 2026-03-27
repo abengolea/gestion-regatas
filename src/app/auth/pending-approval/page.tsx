@@ -180,6 +180,9 @@ export default function PendingApprovalPage() {
             <p className="text-muted-foreground">
               Si eres <strong>jugador</strong>, podés enviar una solicitud. Un entrenador la verá en Solicitudes y te dará acceso al aprobarla.
             </p>
+            <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+              Si sos <strong>administrador o entrenador</strong> de una subcomisión/escuela y deberías tener acceso: contactá al super administrador para que te agregue como responsable en la escuela correspondiente (desde Gestionar Subcomisión → Usuarios → Añadir Responsable).
+            </p>
             {requestSent || hasPendingAccessRequest ? (
               <p className="text-sm text-green-600 dark:text-green-400 font-medium">
                 Ya tenés una solicitud pendiente. Cuando un entrenador la apruebe, podrás entrar. Usá &quot;Reintentar&quot; después.

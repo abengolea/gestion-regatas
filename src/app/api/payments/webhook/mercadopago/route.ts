@@ -18,16 +18,43 @@ import {
   getMercadoPagoConnection,
 } from '@/lib/payments/db';
 import { sendEmailEvent } from '@/lib/payments/email-events';
+import { applyViajeMercadoPagoApproved } from '@/lib/viajes/mercadopago-webhook';
+import { applyEntradaMercadoPagoApproved } from '@/lib/entradas/mercadopago-webhook';
+import { applyAbonoPublicoMercadoPagoApproved } from '@/lib/entradas/abono-publico-webhook';
+import { applyAbonoPublicoPlateasMercadoPagoApproved } from '@/lib/entradas/abono-publico-plateas-webhook';
+import { isAbonoPublicoEntrada } from '@/lib/entradas/abono-publico-constants';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import type admin from 'firebase-admin';
 
-/** external_reference que guardamos al crear la preferencia: schoolId|socioId|period */
-function parseExternalReference(ref: string): { schoolId: string; playerId: string; period: string } | null {
+type ParsedExternalRef =
+  | { kind: 'cuota'; schoolId: string; playerId: string; period: string }
+  | { kind: 'entrada'; schoolId: string; pendingId: string; eventId: string; seatId: string }
+  | { kind: 'entrada_multi'; schoolId: string; pendingId: string };
+
+/**
+ * external_reference:
+ * - cuotas: schoolId|socioId|period
+ * - una platea: schoolId|pendingId|entrada:eventId:seatId
+ * - varias plateas: schoolId|pendingId|entrada-multi
+ */
+function parseExternalReference(ref: string): ParsedExternalRef | null {
   const parts = ref.split('|');
   if (parts.length !== 3) return null;
-  const [schoolId, playerId, period] = parts;
-  if (!schoolId || !playerId || !period) return null;
-  return { schoolId, playerId, period };
+  const [schoolId, mid, period] = parts;
+  if (!schoolId || !mid || !period) return null;
+  if (period === 'entrada-multi') {
+    return { kind: 'entrada_multi', schoolId, pendingId: mid };
+  }
+  if (period.startsWith('entrada:')) {
+    const rest = period.slice('entrada:'.length);
+    const colon = rest.indexOf(':');
+    if (colon === -1) return null;
+    const eventId = rest.slice(0, colon);
+    const seatId = rest.slice(colon + 1);
+    if (!eventId || !seatId) return null;
+    return { kind: 'entrada', schoolId, pendingId: mid, eventId, seatId };
+  }
+  return { kind: 'cuota', schoolId, playerId: mid, period };
 }
 
 export async function GET(request: Request) {
@@ -103,9 +130,87 @@ async function processNotification(params: {
     return NextResponse.json({ ok: true });
   }
 
-  const { playerId, period } = ref;
+  if (ref.schoolId !== schoolId) {
+    console.warn('[webhook/mercadopago] schoolId mismatch query vs external_reference', {
+      query: schoolId,
+      ref: ref.schoolId,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   const amount = payment.transaction_amount ?? 0;
   const currency = payment.currency_id ?? 'ARS';
+
+  if (ref.kind === 'entrada' || ref.kind === 'entrada_multi') {
+    try {
+      const pendSnap = await db
+        .collection('subcomisiones')
+        .doc(ref.schoolId)
+        .collection('entradasPagosPendientes')
+        .doc(ref.pendingId)
+        .get();
+      const pd = pendSnap.data() as
+        | { tipo?: string; seatIds?: string[]; abonoMapEventId?: string }
+        | undefined;
+
+      const isAbonoConPlateas =
+        pd?.tipo === 'abono_publico' &&
+        Array.isArray(pd.seatIds) &&
+        pd.seatIds.length > 0 &&
+        typeof pd.abonoMapEventId === 'string' &&
+        pd.abonoMapEventId.length > 0;
+
+      if (isAbonoConPlateas) {
+        await applyAbonoPublicoPlateasMercadoPagoApproved(db, {
+          schoolId: ref.schoolId,
+          pendingId: ref.pendingId,
+          paymentId: String(paymentId),
+          amount,
+          currency,
+        });
+      } else if (ref.kind === 'entrada' && isAbonoPublicoEntrada(ref.eventId, ref.seatId)) {
+        await applyAbonoPublicoMercadoPagoApproved(db, {
+          schoolId: ref.schoolId,
+          pendingId: ref.pendingId,
+          paymentId: String(paymentId),
+          amount,
+          currency,
+        });
+      } else {
+        await applyEntradaMercadoPagoApproved(db, {
+          schoolId: ref.schoolId,
+          pendingId: ref.pendingId,
+          paymentId: String(paymentId),
+          amount,
+          ...(ref.kind === 'entrada'
+            ? { legacyEventId: ref.eventId, legacySeatId: ref.seatId }
+            : {}),
+        });
+      }
+    } catch (e) {
+      console.error('[webhook/mercadopago] entrada/abono apply failed', e);
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  const { playerId, period } = ref;
+
+  if (period.startsWith('viaje-')) {
+    const viajeId = period.slice('viaje-'.length);
+    if (!viajeId) return NextResponse.json({ ok: true });
+    try {
+      await applyViajeMercadoPagoApproved(db, {
+        schoolId: ref.schoolId,
+        playerId,
+        viajeId,
+        paymentId: String(paymentId),
+        amount,
+      });
+    } catch (e) {
+      console.error('[webhook/mercadopago] viaje apply failed', e);
+    }
+    return NextResponse.json({ ok: true });
+  }
 
   const playerExists = await playerExistsInSchool(db, schoolId, playerId);
   if (!playerExists) {

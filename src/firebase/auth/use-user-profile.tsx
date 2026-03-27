@@ -5,7 +5,13 @@ import { useFirestore } from '../provider';
 import type { SubcomisionUser, UserProfile, SubcomisionMembership } from '@/lib/types';
 import { useEffect, useMemo, useState } from 'react';
 import { getDoc, doc } from 'firebase/firestore';
+import { usePathname, useSearchParams } from 'next/navigation';
 
+function membershipRolePriority(role: string): number {
+  const order = ['admin_subcomision', 'encargado_deportivo', 'editor', 'viewer', 'player'] as const;
+  const i = order.indexOf(role as (typeof order)[number]);
+  return i === -1 ? 99 : i;
+}
 
 // This type extends SubcomisionMembership to include the full user data found in the subcollection.
 type FullSubcomisionMembership = SubcomisionMembership & Omit<SubcomisionUser, 'id'> & { socioId?: string; schoolId?: string; playerId?: string };
@@ -17,6 +23,17 @@ type FullSubcomisionMembership = SubcomisionMembership & Omit<SubcomisionUser, '
 export function useUserProfile() {
   const { user, loading: authLoading } = useUser();
   const firestore = useFirestore();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const schoolIdFromNavigation = useMemo(() => {
+    const q = searchParams.get('schoolId') ?? searchParams.get('subcomisionId');
+    if (q) return q;
+    let m = pathname.match(/^\/dashboard\/subcomisiones\/([^/]+)/);
+    if (m?.[1]) return m[1];
+    m = pathname.match(/^\/dashboard\/schools\/([^/]+)/);
+    return m?.[1] ?? null;
+  }, [pathname, searchParams]);
 
   const [memberships, setMemberships] = useState<FullSubcomisionMembership[] | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -68,7 +85,7 @@ export function useUserProfile() {
             email: m.email ?? emailNorm,
             socioId: (m as { socioId?: string }).socioId,
             playerId: (m as { playerId?: string }).playerId,
-          }));
+          })).sort((a, b) => membershipRolePriority(a.role) - membershipRolePriority(b.role));
           setMemberships(userMemberships);
           setProfileLoading(false);
           return;
@@ -129,6 +146,15 @@ export function useUserProfile() {
 
   const loading = authLoading || profileLoading;
 
+  const activeMembership = useMemo(() => {
+    if (!memberships || memberships.length === 0) return null;
+    if (schoolIdFromNavigation) {
+      const found = memberships.find((m) => m.subcomisionId === schoolIdFromNavigation);
+      if (found) return found;
+    }
+    return [...memberships].sort((a, b) => membershipRolePriority(a.role) - membershipRolePriority(b.role))[0];
+  }, [memberships, schoolIdFromNavigation]);
+
   const profile: UserProfile | null = useMemo(() => {
     if (loading || !user) {
       return null;
@@ -153,8 +179,9 @@ export function useUserProfile() {
       return null; // This is what triggers the "pending approval" page
     }
 
-    // If they have memberships, build their profile from the first one.
-    const activeMembership = memberships[0];
+    if (!activeMembership) {
+      return null;
+    }
     const subcomisionId = activeMembership.subcomisionId ?? (activeMembership as { schoolId?: string }).schoolId;
     const socioId = activeMembership.socioId ?? (activeMembership as { playerId?: string }).playerId;
 
@@ -169,7 +196,7 @@ export function useUserProfile() {
       socioId: socioId,
       playerId: socioId,
     };
-  }, [loading, user, isSuperAdmin, memberships]);
+  }, [loading, user, isSuperAdmin, memberships, activeMembership]);
 
 
   const isReady = !loading;

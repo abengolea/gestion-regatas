@@ -40,6 +40,41 @@ export interface AuditLogEntry {
   createdAt: Date;
 }
 
+/** Módulos que el gerente del club puede desactivar por subcomisión. Ausente o distinto de `false` = habilitado. */
+export type SubcomisionModuleKey =
+  | "attendance"
+  | "trainingSchedules"
+  | "medicalRecords"
+  | "registrations"
+  | "support"
+  | "notas"
+  | "payments"
+  | "viajes"
+  | "ventaEntradas"
+  | "messages"
+  | "evaluations"
+  | "physicalEvaluations"
+  | "videoteca"
+  | "analytics"
+  | "recordVideo";
+
+/** Configuración de venta de abonos/plateas sin login (enlace /abonos-plateas/[slug]). */
+export interface VentaAbonoPublica {
+  activa: boolean;
+  /** Slug dedicado para la URL; si no existe, puede usarse el `slug` de la subcomisión o el id del doc. */
+  slug?: string;
+  titulo: string;
+  descripcion?: string;
+  precioSocio: number;
+  precioGeneral: number;
+  moneda: string;
+  /**
+   * Id del documento en `plateasEventos` cuyo plano se usa para elegir platea(s) antes de pagar el abono.
+   * Debe existir y tener subcolección `asientos` con los mismos ids que el layout (ej. rio-1).
+   */
+  plateasEventoMapaId?: string;
+}
+
 export interface Subcomision {
   id: string;
   name: string;
@@ -51,6 +86,9 @@ export interface Subcomision {
   logoUrl?: string;
   status: 'active' | 'suspended';
   createdAt: Date;
+  moduleFlags?: Partial<Record<SubcomisionModuleKey, boolean>>;
+  /** Si existe y activa, /abonos-plateas/[ventaAbonoPublica.slug] vende un abono vía Mercado Pago. */
+  ventaAbonoPublica?: VentaAbonoPublica;
 }
 
 export interface Category {
@@ -451,3 +489,5 @@ export * from './payments';
 export * from './platform-fee';
 // Re-export viaje types
 export * from './viaje';
+// Re-export plateas / entradas
+export * from './entradas';

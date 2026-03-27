@@ -53,7 +53,7 @@ export default function SettingsPage() {
       const subject = "Prueba Trigger Email - Regatas+";
       const contentHtml = "<p>Este es un <strong>email de prueba</strong> desde la extensión Trigger Email.</p><p>Si lo recibiste, la configuración está correcta.</p>";
       const html = buildEmailHtml(contentHtml, {
-        title: "Escuelas River",
+        title: "Club de Regatas San Nicolás",
         baseUrl: typeof window !== "undefined" ? window.location.origin : "",
       });
       const text = htmlToPlainText(contentHtml);

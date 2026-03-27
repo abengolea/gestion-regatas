@@ -18,14 +18,14 @@ import {
   FileText,
   FileHeart,
   Sliders,
-  History,
-  UserX,
   Newspaper,
   Dumbbell,
   Plane,
   Store,
+  Ticket,
 } from "lucide-react";
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   SidebarHeader,
@@ -41,32 +41,50 @@ import { Badge } from "@/components/ui/badge";
 import { EscudoCRSN } from "../icons/EscudoCRSN";
 import { useUserProfile, useCollection, useDoc, useFirebase } from "@/firebase";
 import { isPlayerProfileComplete } from "@/lib/utils";
-import type { Socio } from "@/lib/types";
+import type { Socio, Subcomision, SubcomisionModuleKey } from "@/lib/types";
+import { isSubcomisionModuleEnabled } from "@/lib/subcomision-modules";
 import { isMedicalRecordApproved } from "@/lib/utils";
 import { getAuth } from "firebase/auth";
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  moduleKey?: SubcomisionModuleKey;
+  badgeOverdue?: boolean;
+};
+
 // Orden por importancia: núcleo operativo → seguimiento → comunicación → administración
 /** Menú para admin_subcomision: sin Evaluaciones Físicas, Asistencia ni Videoteca (solo para profesores). */
-const schoolUserMenuItemsAdmin = [
+const schoolUserMenuItemsAdmin: NavItem[] = [
   { href: "/dashboard", label: "Panel Principal", icon: Home },
   { href: "/dashboard/players", label: "Jugadores", icon: Users },
-  { href: "/dashboard/training-schedules", label: "Entrenamientos", icon: Dumbbell },
-  { href: "/dashboard/medical-records", label: "Fichas médicas", icon: FileHeart },
-  { href: "/dashboard/registrations", label: "Solicitudes", icon: UserCheck },
-  { href: "/dashboard/support", label: "Centro de Soporte", icon: MessageCircle },
-  { href: "/dashboard/notas", label: "Notas", icon: Newspaper },
+  { href: "/dashboard/training-schedules", label: "Entrenamientos", icon: Dumbbell, moduleKey: "trainingSchedules" },
+  { href: "/dashboard/medical-records", label: "Fichas médicas", icon: FileHeart, moduleKey: "medicalRecords" },
+  { href: "/dashboard/registrations", label: "Solicitudes", icon: UserCheck, moduleKey: "registrations" },
+  { href: "/dashboard/support", label: "Centro de Soporte", icon: MessageCircle, moduleKey: "support" },
+  { href: "/dashboard/notas", label: "Notas", icon: Newspaper, moduleKey: "notas" },
 ];
 
 /** Menú para profesores: solo Evaluaciones Físicas además de lo básico. Sin Asistencia, Entrenamientos, Videoteca ni Centro de Soporte. */
-const schoolUserMenuItemsProfesor = [
+const schoolUserMenuItemsProfesor: NavItem[] = [
   { href: "/dashboard", label: "Panel Principal", icon: Home },
   { href: "/dashboard/players", label: "Jugadores", icon: Users },
-  { href: "/dashboard/medical-records", label: "Fichas médicas", icon: FileHeart },
-  { href: "/dashboard/registrations", label: "Solicitudes", icon: UserCheck },
-  { href: "/dashboard/physical-assessments-config", label: "Evaluaciones Físicas", icon: Activity },
-  { href: "/dashboard/notas", label: "Notas", icon: Newspaper },
+  { href: "/dashboard/medical-records", label: "Fichas médicas", icon: FileHeart, moduleKey: "medicalRecords" },
+  { href: "/dashboard/registrations", label: "Solicitudes", icon: UserCheck, moduleKey: "registrations" },
+  { href: "/dashboard/physical-assessments-config", label: "Evaluaciones Físicas", icon: Activity, moduleKey: "physicalEvaluations" },
+  { href: "/dashboard/notas", label: "Notas", icon: Newspaper, moduleKey: "notas" },
 ];
 
-const superAdminMenuItems = [
+/** Rutas bajo el hub «Configuración global» (solo enlaces desde esa página). */
+const SUPER_ADMIN_CONFIG_HUB_PATHS = new Set([
+  "/dashboard/admin/config",
+  "/dashboard/admin/test-email",
+  "/dashboard/admin/audit",
+  "/dashboard/admin/delete-test-users",
+]);
+
+const superAdminMenuItems: NavItem[] = [
     { href: "/dashboard", label: "Panel del Gerente", icon: Home },
     { href: "/dashboard?tab=subcomisiones", label: "Subcomisiones", icon: Building },
     { href: "/dashboard?tab=socios", label: "Socios", icon: UserCheck },
@@ -74,9 +92,6 @@ const superAdminMenuItems = [
     { href: "/dashboard/admin/physical-template", label: "Evaluaciones físicas (plantilla)", icon: Activity },
     { href: "/dashboard/support/operator", label: "Tickets de Soporte", icon: Headphones },
     { href: "/dashboard/admin/config", label: "Configuración global", icon: Sliders },
-    { href: "/dashboard/admin/test-email", label: "Probar Trigger Email", icon: Mail },
-    { href: "/dashboard/admin/audit", label: "Auditoría", icon: History },
-    { href: "/dashboard/admin/delete-test-users", label: "Borrar usuarios de prueba", icon: UserX },
     { href: "/dashboard/notas", label: "Notas", icon: Newspaper },
 ];
 
@@ -129,7 +144,15 @@ export function SidebarNav() {
     ).length;
   }, [allPlayers]);
 
-  let menuItems;
+  const schoolIdForModules =
+    profile?.role === "player"
+      ? (profile.activeSchoolId ?? undefined)
+      : (activeSchoolId ?? undefined);
+  const modulesDocPath =
+    !isSuperAdmin && schoolIdForModules ? `subcomisiones/${schoolIdForModules}` : "";
+  const { data: subcomisionForModules } = useDoc<Subcomision>(modulesDocPath);
+
+  let menuItems: NavItem[];
 
   if (isSuperAdmin) {
     menuItems = superAdminMenuItems;
@@ -140,20 +163,20 @@ export function SidebarNav() {
       const tab = (t: string) => `${profileHref}&tab=${t}`;
       menuItems = [
         { href: profileHref, label: "Mi perfil", icon: Users },
-        { href: tab("attendance"), label: "Asistencia", icon: ClipboardCheck },
-        { href: tab("evaluations"), label: "Evaluaciones deportivas", icon: FileText },
-        { href: tab("physical"), label: "Evaluaciones físicas", icon: Activity },
-        { href: tab("videoteca"), label: "Videoteca", icon: Video },
-        { href: "/dashboard/payments", label: "Mis pagos", icon: Banknote, badgeOverdue: true },
+        { href: tab("attendance"), label: "Asistencia", icon: ClipboardCheck, moduleKey: "attendance" },
+        { href: tab("evaluations"), label: "Evaluaciones deportivas", icon: FileText, moduleKey: "evaluations" },
+        { href: tab("physical"), label: "Evaluaciones físicas", icon: Activity, moduleKey: "physicalEvaluations" },
+        { href: tab("videoteca"), label: "Videoteca", icon: Video, moduleKey: "videoteca" },
+        { href: "/dashboard/payments", label: "Mis pagos", icon: Banknote, badgeOverdue: true, moduleKey: "payments" },
       ];
     } else {
       const tab = (t: string) => `${profileHref}&tab=${t}`;
       menuItems = [
         { href: "/dashboard", label: "Panel Principal", icon: Home },
         { href: profileHref, label: "Mi perfil", icon: Users },
-        { href: tab("videoteca"), label: "Videoteca", icon: Video },
-        { href: "/dashboard/payments", label: "Mis pagos", icon: Banknote, badgeOverdue: true },
-        { href: "/dashboard/support", label: "Centro de Soporte", icon: MessageCircle },
+        { href: tab("videoteca"), label: "Videoteca", icon: Video, moduleKey: "videoteca" },
+        { href: "/dashboard/payments", label: "Mis pagos", icon: Banknote, badgeOverdue: true, moduleKey: "payments" },
+        { href: "/dashboard/support", label: "Centro de Soporte", icon: MessageCircle, moduleKey: "support" },
       ];
     }
   } else {
@@ -163,31 +186,50 @@ export function SidebarNav() {
       ? [...schoolUserMenuItemsProfesor]
       : [...schoolUserMenuItemsAdmin];
     menuItems = baseMenu;
-    if (profile?.role === 'admin_subcomision' && profile.activeSchoolId) {
-      const pagos = { href: "/dashboard/payments", label: "Pagos", icon: Banknote };
-      const viajes = {
+    const canSeeSchoolOps =
+      (profile?.role === "admin_subcomision" || profile?.role === "encargado_deportivo") &&
+      profile.activeSchoolId;
+    if (canSeeSchoolOps) {
+      const pagos: NavItem = { href: "/dashboard/payments", label: "Pagos", icon: Banknote, moduleKey: "payments" };
+      const viajes: NavItem = {
         href: `/dashboard/subcomisiones/${profile.activeSchoolId}/viajes`,
         label: "Viajes",
         icon: Plane,
+        moduleKey: "viajes",
       };
-      const mensajes = { href: "/dashboard/messages", label: "Mensajes", icon: Mail };
-      const gestionarEscuela = {
+      const entradas: NavItem = {
+        href: `/dashboard/subcomisiones/${profile.activeSchoolId}/entradas`,
+        label: "Venta de entradas",
+        icon: Ticket,
+        moduleKey: "ventaEntradas",
+      };
+      const mensajes: NavItem = { href: "/dashboard/messages", label: "Mensajes", icon: Mail, moduleKey: "messages" };
+      const gestionarEscuela: NavItem = {
         href: `/dashboard/subcomisiones/${profile.activeSchoolId}`,
         label: "Gestionar Subcomisión",
-        icon: Shield
+        icon: Shield,
       };
       const baseWithoutNotas = menuItems.filter((i) => i.href !== "/dashboard/notas");
-      const afterAttendance = 3; // Después de Asistencia
+      const afterAttendance = 3; // Después de entrenamientos (índice 2); insertar Pagos/Viajes antes de fichas
       menuItems = [
         ...baseWithoutNotas.slice(0, afterAttendance),
         pagos,
         viajes,
+        entradas,
         ...baseWithoutNotas.slice(afterAttendance),
         mensajes,
         gestionarEscuela,
-        { href: "/dashboard/notas", label: "Notas", icon: Newspaper }
+        { href: "/dashboard/notas", label: "Notas", icon: Newspaper, moduleKey: "notas" },
       ];
     }
+  }
+
+  if (!isSuperAdmin) {
+    menuItems = menuItems.filter(
+      (item) =>
+        !item.moduleKey ||
+        isSubcomisionModuleEnabled(subcomisionForModules?.moduleFlags, item.moduleKey)
+    );
   }
 
   // Evitar ítems duplicados por href (claves únicas y menú sin duplicados)
@@ -219,7 +261,9 @@ export function SidebarNav() {
                 <Link href={item.href} className="relative flex items-center" onClick={closeMobileSidebar}>
                     <SidebarMenuButton
                     isActive={
-                      item.href === "/dashboard/payments"
+                      item.href === "/dashboard/admin/config"
+                        ? SUPER_ADMIN_CONFIG_HUB_PATHS.has(pathname)
+                        : item.href === "/dashboard/payments"
                         ? pathname === "/dashboard/payments"
                         : item.href === "/dashboard"
                         ? pathname === "/dashboard" && !searchParams.get("tab")

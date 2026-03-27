@@ -65,33 +65,33 @@ export function NotasFeed({ initialPosts, initialCursor, schoolSlug, subcomision
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-2">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <input
           type="search"
           placeholder="Buscar por título o etiquetas..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="flex h-11 sm:h-10 min-h-[44px] sm:min-h-0 w-full sm:flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label="Buscar notas"
         />
         <button
           type="button"
           onClick={handleSearch}
-          className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="inline-flex h-11 sm:h-10 min-h-[44px] sm:min-h-0 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           Buscar
         </button>
       </div>
 
       {posts.length === 0 ? (
-        <p className="text-center text-muted-foreground py-12">
+        <p className="text-center text-muted-foreground py-12 sm:py-16 text-sm sm:text-base">
           No hay notas publicadas aún.
         </p>
       ) : (
         <>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {posts.map((post) => (
               <PostCard key={post.id} post={post} />
             ))}

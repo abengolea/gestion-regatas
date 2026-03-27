@@ -85,7 +85,7 @@ export function MedicalRecordField({
     setUploading(true);
     try {
       const { url, storagePath } = await uploadMedicalRecord(storage, schoolId, playerId, file);
-      const res = await fetch("/api/socios/medical-record", {
+      const res = await fetch("/api/players/medical-record", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

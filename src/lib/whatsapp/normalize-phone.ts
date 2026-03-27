@@ -38,3 +38,36 @@ export function isValidArgentinePhone(phone: string): boolean {
   if (!normalized.startsWith('54')) return false;
   return true;
 }
+
+/**
+ * Teléfono solo dígitos, consistente con envío a NotificasHub / wa_id (AR).
+ * - Usa `normalizeArgentinePhone` cuando el valor ya incluye 54 o formato local con 0.
+ * - Si hay 10 dígitos sin código país (típico móvil), antepone 549.
+ */
+export function normalizePhoneForNotificasHub(input: string | null | undefined): string {
+  if (!input || typeof input !== 'string') return '';
+  const raw = input.trim();
+  if (!raw || raw === '—' || raw === '-') return '';
+
+  const onlyDigits = raw.replace(/\D/g, '');
+  if (!onlyDigits) return '';
+
+  let candidate: string;
+  if (onlyDigits.startsWith('54')) {
+    candidate = raw;
+  } else if (onlyDigits.length === 10) {
+    candidate = `549${onlyDigits}`;
+  } else if (onlyDigits.length === 11 && onlyDigits.startsWith('9')) {
+    candidate = `54${onlyDigits}`;
+  } else {
+    candidate = raw;
+  }
+
+  const normalized = normalizeArgentinePhone(candidate);
+  if (normalized) return normalized;
+
+  if (onlyDigits.startsWith('54') && onlyDigits.length >= 12 && onlyDigits.length <= 13) {
+    return onlyDigits;
+  }
+  return '';
+}

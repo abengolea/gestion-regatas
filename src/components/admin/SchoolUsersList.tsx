@@ -46,7 +46,7 @@ export function SubcomisionUsersList({ schoolId, subcomisionId }: { schoolId?: s
   const loading = usersLoading;
 
   const roleDisplay: { [key in SubcomisionUser['role']]: string } = {
-    admin_subcomision: 'Admin. de Escuela',
+    admin_subcomision: 'Administrador',
     encargado_deportivo: 'Entrenador',
     editor: 'Editor',
     viewer: 'Visor',
@@ -63,7 +63,7 @@ export function SubcomisionUsersList({ schoolId, subcomisionId }: { schoolId?: s
       await deleteDoc(userRef);
       toast({
         title: "Acceso Revocado",
-        description: `El usuario ${userToDelete.displayName} ya no tiene acceso a esta escuela.`,
+        description: `El usuario ${userToDelete.displayName} ya no tiene acceso a esta subcomisión.`,
       });
     } catch (e) {
       toast({
@@ -84,10 +84,10 @@ export function SubcomisionUsersList({ schoolId, subcomisionId }: { schoolId?: s
           <div>
               <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Usuarios de la Escuela
+                  Responsables de la subcomisión
               </CardTitle>
               <CardDescription>
-                  {loading ? 'Cargando usuarios...' : `Hay ${users?.length || 0} usuarios asignados a esta escuela.`}
+                  {loading ? 'Cargando usuarios...' : `Hay ${users?.length || 0} usuarios asignados a esta subcomisión.`}
               </CardDescription>
           </div>
           <AddSubcomisionUserDialog subcomisionId={id} />
@@ -150,7 +150,7 @@ export function SubcomisionUsersList({ schoolId, subcomisionId }: { schoolId?: s
               ))}
               {!loading && (!users || users.length === 0) && (
                   <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">No hay usuarios asignados a esta escuela.</TableCell>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">No hay usuarios asignados a esta subcomisión.</TableCell>
                   </TableRow>
               )}
             </TableBody>
@@ -164,7 +164,7 @@ export function SubcomisionUsersList({ schoolId, subcomisionId }: { schoolId?: s
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción revocará el acceso de <span className="font-semibold">{userToDelete?.displayName}</span> a la escuela. El usuario no será eliminado de la plataforma, pero no podrá acceder a los datos de esta sede. Puedes volver a darle acceso más tarde.
+              Esta acción revocará el acceso de <span className="font-semibold">{userToDelete?.displayName}</span> a esta subcomisión. El usuario no será eliminado de la plataforma, pero no podrá acceder a los datos de esta sede. Podés volver a darle acceso más tarde.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

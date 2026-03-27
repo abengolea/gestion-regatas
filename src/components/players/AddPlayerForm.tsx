@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
   SelectContent,
@@ -32,7 +33,7 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { useAuth, useFirestore, useStorage, useUserProfile } from "@/firebase";
+import { useAuth, useFirestore, useStorage, useUserProfile, useCollection } from "@/firebase";
 import { collection, doc, writeBatch, Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -73,6 +74,8 @@ const playerSchema = z.object({
   observations: z.string().optional(),
   photoUrl: z.string().optional().or(z.literal("")),
   genero: z.enum(["masculino", "femenino"]).optional(),
+  /** ID de categoría formativa (schools/.../categorias) */
+  categoriaId: z.string().optional(),
 });
 
 export function AddPlayerForm() {
@@ -82,6 +85,12 @@ export function AddPlayerForm() {
     const { toast } = useToast();
     const router = useRouter();
     const { profile, activeSchoolId } = useUserProfile();
+
+    const { data: categorias } = useCollection<{ id: string; nombre: string }>(
+        activeSchoolId ? `schools/${activeSchoolId}/categorias` : "",
+        { orderBy: ["orden", "asc"] }
+    );
+    const tieneCategorias = (categorias?.length ?? 0) > 0;
 
     const form = useForm<z.infer<typeof playerSchema>>({
         resolver: zodResolver(playerSchema),
@@ -98,6 +107,7 @@ export function AddPlayerForm() {
             genero: undefined,
             dni: "",
             healthInsurance: "",
+            categoriaId: "",
         },
     });
 
@@ -110,6 +120,15 @@ export function AddPlayerForm() {
                 variant: "destructive",
                 title: "Error de Perfil",
                 description: "Tu perfil de usuario no está asociado a una escuela. No puedes añadir jugadores.",
+            });
+            return;
+        }
+
+        if (tieneCategorias && !values.categoriaId?.trim()) {
+            toast({
+                variant: "destructive",
+                title: "Categoría requerida",
+                description: "Seleccioná a qué categoría formativa pertenece el jugador (viajes, torneos, listados).",
             });
             return;
         }
@@ -148,6 +167,7 @@ export function AddPlayerForm() {
                 photoUrl: values.photoUrl,
                 observations: values.observations,
                 ...(values.genero?.trim() && { genero: values.genero.trim() }),
+                ...(values.categoriaId?.trim() && { categoriaId: values.categoriaId.trim() }),
                 createdAt: Timestamp.now(),
                 createdBy: profile.uid,
             };
@@ -165,6 +185,23 @@ export function AddPlayerForm() {
             }
 
             await batch.commit();
+
+            if (values.tutorPhone?.trim()) {
+              try {
+                const hubToken = await mainAuth.currentUser?.getIdToken();
+                if (!hubToken) throw new Error("no token");
+                await fetch("/api/notificashub/register-phone", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${hubToken}`,
+                  },
+                  body: JSON.stringify({ phone: values.tutorPhone }),
+                });
+              } catch {
+                /* no bloquear alta si el hub falla */
+              }
+            }
 
             if (pendingPhotoFile) {
                 try {
@@ -278,6 +315,35 @@ export function AddPlayerForm() {
                     </FormItem>
                     )}
                 />
+                {tieneCategorias && (
+                  <FormField
+                    control={form.control}
+                    name="categoriaId"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Categoría formativa</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Elegí la categoría (U21, U17, etc.)" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {categorias!.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.nombre}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Misma categoría que usás en viajes y en la pestaña Categorías de la subcomisión.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                     control={form.control}
                     name="email"
@@ -300,7 +366,7 @@ export function AddPlayerForm() {
                       <FormItem>
                         <FormLabel>Contraseña inicial (opcional)</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="Mín. 6 caracteres" {...field} autoComplete="new-password" />
+                          <PasswordInput placeholder="Mín. 6 caracteres" {...field} autoComplete="new-password" />
                         </FormControl>
                         <FormDescription>
                           Si la dejás en blanco, le enviaremos un correo al jugador para que cree su propia contraseña.

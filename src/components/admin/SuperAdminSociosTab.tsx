@@ -35,8 +35,8 @@ import {
   Filter,
   Upload,
 } from "lucide-react";
-import { useFirestore } from "@/firebase";
-import { collectionGroup, getDocs, query, limit, collection, doc, writeBatch, Timestamp } from "firebase/firestore";
+import { useFirestore, useUserProfile } from "@/firebase";
+import { collection, doc, writeBatch, Timestamp } from "firebase/firestore";
 import type { Subcomision, Socio } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -110,6 +110,7 @@ export function SuperAdminSociosTab({
 }: SuperAdminSociosTabProps) {
   const router = useRouter();
   const firestore = useFirestore();
+  const { user, isSuperAdmin } = useUserProfile();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -124,55 +125,47 @@ export function SuperAdminSociosTab({
   const [importTargetSubcomisionId, setImportTargetSubcomisionId] = useState<string>("");
 
   const loadSocios = useCallback(async () => {
-    if (!firestore) return;
+    if (!user || !isSuperAdmin) {
+      setAllSocios([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const [sociosSnap, playersSnap] = await Promise.all([
-        getDocs(query(collectionGroup(firestore, "socios"), limit(10000))),
-        getDocs(query(collectionGroup(firestore, "players"), limit(10000))),
-      ]);
-      const list: SocioWithSubcomision[] = [];
-      const addFromSnapshot = (snap: typeof sociosSnap) => {
-        snap.docs.forEach((d) => {
-          const pathParts = d.ref.path.split("/");
-          const subcomisionId = pathParts[1];
-          const data = d.data();
-          const nombre = data.nombre ?? data.firstName ?? "";
-          const apellido = data.apellido ?? data.lastName ?? "";
-          const createdAt = data.createdAt?.toDate?.() ?? data.fechaAlta ?? new Date();
-          list.push({
-            id: d.id,
-            subcomisionId,
-            nombre,
-            apellido,
-            firstName: nombre,
-            lastName: apellido,
-            email: data.email ?? "",
-            dni: data.dni ?? "",
-            telefono: data.telefono ?? "",
-            fechaNacimiento: data.fechaNacimiento ?? "",
-            fechaAlta: data.fechaAlta ?? "",
-            numeroSocio: data.numeroSocio ?? "",
-            tipoSocio: (data.tipoSocio ?? "general") as Socio["tipoSocio"],
-            esFederado: data.esFederado ?? false,
-            esVitalicio: data.esVitalicio ?? false,
-            estaActivo: data.estaActivo ?? true,
-            subcomisiones: data.subcomisiones ?? [subcomisionId],
-            status: data.status ?? "active",
-            archived: data.archived ?? false,
-            createdAt,
-            ...data,
-          } as SocioWithSubcomision);
-        });
-      };
-      addFromSnapshot(sociosSnap);
-      addFromSnapshot(playersSnap);
-      const seen = new Set<string>();
-      const merged = list.filter((s) => {
-        const key = `${s.subcomisionId}:${s.id}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
+      const token = await user.getIdToken();
+      const res = await fetch("/api/admin/socios-aggregate", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("aggregate failed");
+      const json = (await res.json()) as { items: Record<string, unknown>[] };
+      const merged: SocioWithSubcomision[] = json.items.map((data) => {
+        const subcomisionId = String(data.subcomisionId);
+        const nombre = String(data.nombre ?? data.firstName ?? "");
+        const apellido = String(data.apellido ?? data.lastName ?? "");
+        const createdAt = data.createdAt ? new Date(String(data.createdAt)) : new Date();
+        return {
+          ...data,
+          id: String(data.id),
+          subcomisionId,
+          nombre,
+          apellido,
+          firstName: nombre,
+          lastName: apellido,
+          email: String(data.email ?? ""),
+          dni: String(data.dni ?? ""),
+          telefono: String(data.telefono ?? ""),
+          fechaNacimiento: String(data.fechaNacimiento ?? ""),
+          fechaAlta: String(data.fechaAlta ?? ""),
+          numeroSocio: String(data.numeroSocio ?? ""),
+          tipoSocio: (data.tipoSocio ?? "general") as Socio["tipoSocio"],
+          esFederado: Boolean(data.esFederado),
+          esVitalicio: Boolean(data.esVitalicio),
+          estaActivo: Boolean(data.estaActivo),
+          subcomisiones: (data.subcomisiones as string[] | undefined) ?? [subcomisionId],
+          status: (data.status as string) ?? "active",
+          archived: Boolean(data.archived),
+          createdAt,
+        } as SocioWithSubcomision;
       });
       setAllSocios(merged);
     } catch (e) {
@@ -181,7 +174,7 @@ export function SuperAdminSociosTab({
     } finally {
       setLoading(false);
     }
-  }, [firestore]);
+  }, [user, isSuperAdmin]);
 
   useEffect(() => {
     loadSocios();

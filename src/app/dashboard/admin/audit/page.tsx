@@ -17,7 +17,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, History } from "lucide-react";
+import Link from "next/link";
+import { Loader2, History, ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useCollection, useUserProfile } from "@/firebase";
 import type { AuditLogEntry } from "@/lib/types";
 import { format } from "date-fns";
@@ -51,7 +53,7 @@ export default function AuditLogPage() {
   }
 
   const actionLabels: Record<string, string> = {
-    "school.create": "Crear escuela",
+    "school.create": "Crear subcomisión",
     "school.update": "Actualizar escuela",
     "school.status_change": "Cambiar estado escuela",
     "platform_user.promote_gerente_club": "Dar super admin",
@@ -62,6 +64,12 @@ export default function AuditLogPage() {
 
   return (
     <div className="flex flex-col gap-4 min-w-0">
+      <Button variant="ghost" size="sm" className="w-fit -ml-2 text-muted-foreground" asChild>
+        <Link href="/dashboard/admin/config">
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Configuración global
+        </Link>
+      </Button>
       <div>
         <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-2">
           <History className="h-8 w-8" />

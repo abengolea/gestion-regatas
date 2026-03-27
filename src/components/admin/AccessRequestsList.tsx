@@ -25,25 +25,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  useCollection,
-  useFirestore,
-  useUserProfile,
-  errorEmitter,
-  FirestorePermissionError,
-} from "@/firebase";
-import {
-  doc,
-  updateDoc,
-  setDoc,
-  addDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  writeBatch,
-  Timestamp,
-} from "firebase/firestore";
+import { useCollection, useUserProfile, useFirebase } from "@/firebase";
+import { getAuth } from "firebase/auth";
+import { usePendingAccessRequests } from "@/hooks/use-pending-access-requests";
 import type { AccessRequest, Socio } from "@/lib/types";
 import { Skeleton } from "../ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -56,12 +40,10 @@ type ActionState = { type: "approving" | "rejecting"; requestId: string } | null
 export function AccessRequestsList() {
   const { profile, activeSchoolId, isReady } = useUserProfile();
   const { toast } = useToast();
-  const firestore = useFirestore();
+  const { app } = useFirebase();
 
-  // Solo se muestran solicitudes pendientes; todas las registraciones son de tipo "player"
-  const { data: requests, loading, error } = useCollection<AccessRequest>(
-    isReady ? "accessRequests" : "",
-    { where: ["status", "==", "pending"], limit: 50 }
+  const { data: requests, loading, error, refetch } = usePendingAccessRequests(
+    isReady && !!activeSchoolId
   );
 
   const { data: socios } = useCollection<Socio>(
@@ -79,7 +61,7 @@ export function AccessRequestsList() {
   } | null>(null);
 
   const handleApprove = async (request: AccessRequest, linkToPlayerId: string | "new") => {
-    if (!profile || !activeSchoolId) {
+    if (!profile || !activeSchoolId || !app) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -88,91 +70,35 @@ export function AccessRequestsList() {
       return;
     }
     setActionState({ type: "approving", requestId: request.id });
-    const emailNorm = request.email.trim().toLowerCase();
 
     try {
-      if (linkToPlayerId === "new") {
-        const sociosRef = collection(firestore, `subcomisiones/${activeSchoolId}/socios`);
-        const nameParts = (request.displayName || "").trim().split(/\s+/);
-        const firstName = nameParts[0] || "Jugador";
-        const lastName = nameParts.slice(1).join(" ") || "";
-        const newSocioRef = await addDoc(sociosRef, {
-          firstName,
-          lastName,
-          birthDate: Timestamp.fromDate(new Date("2010-01-01")),
-          email: emailNorm,
-          tutorContact: { name: "Por completar", phone: "" },
-          status: "active",
-          observations: `Aprobado desde solicitud de acceso el ${format(new Date(), "PPP", { locale: es })}.`,
-          createdAt: Timestamp.now(),
-          createdBy: profile.uid,
-        });
-        await setDoc(doc(firestore, "socioLogins", emailNorm), {
-          subcomisionId: activeSchoolId,
-          socioId: newSocioRef.id,
-        });
-        const batch = writeBatch(firestore);
-        batch.update(doc(firestore, "accessRequests", request.id), {
-          status: "approved",
-          approvedSchoolId: activeSchoolId,
-          approvedPlayerId: newSocioRef.id,
-          approvedAt: Timestamp.now(),
-        });
-        // Rechazar duplicados del mismo email para limpiar la base
-        const dupesSnap = await getDocs(
-          query(
-            collection(firestore, "accessRequests"),
-            where("email", "==", emailNorm),
-            where("status", "==", "pending")
-          )
-        );
-        dupesSnap.docs.forEach((d) => {
-          if (d.id !== request.id) batch.update(d.ref, { status: "rejected" });
-        });
-        await batch.commit();
-        toast({
-          title: "Solicitud aprobada",
-          description: `Se creó el jugador y ${request.email} ya puede iniciar sesión.`,
-        });
-      } else {
-        const socioRef = doc(firestore, `subcomisiones/${activeSchoolId}/socios`, linkToPlayerId);
-        await updateDoc(socioRef, { email: emailNorm });
-        await setDoc(doc(firestore, "socioLogins", emailNorm), {
-          subcomisionId: activeSchoolId,
-          socioId: linkToPlayerId,
-        });
-        const batch = writeBatch(firestore);
-        batch.update(doc(firestore, "accessRequests", request.id), {
-          status: "approved",
-          approvedSchoolId: activeSchoolId,
-          approvedPlayerId: linkToPlayerId,
-          approvedAt: Timestamp.now(),
-        });
-        const dupesSnap = await getDocs(
-          query(
-            collection(firestore, "accessRequests"),
-            where("email", "==", emailNorm),
-            where("status", "==", "pending")
-          )
-        );
-        dupesSnap.docs.forEach((d) => {
-          if (d.id !== request.id) batch.update(d.ref, { status: "rejected" });
-        });
-        await batch.commit();
-        toast({
-          title: "Solicitud aprobada",
-          description: `Se vinculó ${request.email} al jugador. Ya puede iniciar sesión.`,
-        });
+      const auth = getAuth(app);
+      const user = auth.currentUser;
+      if (!user) throw new Error("No autenticado");
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/access-requests/${request.id}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "approve",
+          activeSchoolId,
+          linkToPlayerId,
+        }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        throw new Error(payload.error ?? res.statusText);
       }
+      toast({
+        title: "Solicitud aprobada",
+        description:
+          linkToPlayerId === "new"
+            ? `Se creó el jugador y ${request.email} ya puede iniciar sesión.`
+            : `Se vinculó ${request.email} al jugador. Ya puede iniciar sesión.`,
+      });
       setApproveDialog(null);
-    } catch (err) {
-      errorEmitter.emit(
-        "permission-error",
-        new FirestorePermissionError({
-          path: "accessRequests",
-          operation: "update",
-        })
-      );
+      await refetch();
+    } catch {
       toast({
         variant: "destructive",
         title: "Error",
@@ -184,16 +110,28 @@ export function AccessRequestsList() {
   };
 
   const handleReject = async (request: AccessRequest) => {
+    if (!app) return;
     setActionState({ type: "rejecting", requestId: request.id });
     try {
-      await updateDoc(doc(firestore, "accessRequests", request.id), {
-        status: "rejected",
+      const auth = getAuth(app);
+      const user = auth.currentUser;
+      if (!user) throw new Error("No autenticado");
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/access-requests/${request.id}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject" }),
       });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error ?? res.statusText);
+      }
       toast({
         title: "Solicitud rechazada",
         description: `Se rechazó la solicitud de ${request.email}.`,
       });
-    } catch (err) {
+      await refetch();
+    } catch {
       toast({
         variant: "destructive",
         title: "Error",

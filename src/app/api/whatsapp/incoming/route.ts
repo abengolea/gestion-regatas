@@ -6,10 +6,11 @@
 
 import { NextResponse } from 'next/server';
 import { WhatsAppBotHandler } from '@/lib/whatsapp/WhatsAppBotHandler';
+import { getNotificasHubInternalSecret } from '@/lib/whatsapp/notificashub-env';
 
 export async function POST(request: Request) {
   const secret = request.headers.get('x-internal-secret');
-  const expected = process.env.NOTIFICASHUB_INTERNAL_SECRET;
+  const expected = getNotificasHubInternalSecret();
 
   if (!expected || secret !== expected) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

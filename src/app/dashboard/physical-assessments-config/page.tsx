@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore } from "@/firebase";
 import { doc, setDoc, Timestamp } from "firebase/firestore";
+import { SubcomisionModuleGuard } from "@/components/subcomision/SubcomisionModuleGuard";
 import {
   Loader2,
   Activity,
@@ -228,6 +229,7 @@ export default function PhysicalAssessmentsConfigPage() {
   };
 
   return (
+    <SubcomisionModuleGuard moduleKey="physicalEvaluations">
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-2">
         <Activity className="h-8 w-8 text-primary" />
@@ -385,5 +387,6 @@ export default function PhysicalAssessmentsConfigPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </SubcomisionModuleGuard>
   );
 }

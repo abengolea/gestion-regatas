@@ -44,27 +44,36 @@ export default function DashboardLayout({
     const profilePath = `/dashboard/players/${profile.playerId}`;
     const isOnProfilePage = pathname === profilePath || pathname?.startsWith(profilePath + "/");
     const isOnPaymentsPage = pathname === "/dashboard/payments";
-    if (!isOnProfilePage && !isOnPaymentsPage) {
-      router.replace(`${profilePath}?subcomisionId=${profile.activeSchoolId}`);
+    const isOnMiQRPage = pathname === "/dashboard/regatas-plus/mi-qr";
+    if (!isOnProfilePage && !isOnPaymentsPage && !isOnMiQRPage) {
+      router.replace(`${profilePath}?schoolId=${profile.activeSchoolId}`);
     }
   }, [isReady, profile, player, pathname, router]);
 
   // Render a loading state until the profile is ready.
   // This prevents any child components from rendering with incomplete auth data.
   if (!isReady || !profile) {
-    return <div className="flex items-center justify-center min-h-screen">Cargando...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-3 text-muted-foreground" aria-live="polite">
+        <div className="h-8 w-8 animate-pulse rounded-full bg-primary/20" aria-hidden />
+        <p className="text-sm font-medium">Cargando...</p>
+      </div>
+    );
   }
 
   // If a profile exists, the user is authorized to see the dashboard layout.
   return (
     <SidebarProvider>
-        <Sidebar variant="inset" collapsible="icon">
+        <Sidebar variant="inset" collapsible="icon" className="context-internal">
           <SidebarNav />
         </Sidebar>
-        <SidebarInset className="bg-background min-w-0 overflow-x-hidden">
+        <SidebarInset className="bg-background min-w-0 overflow-x-hidden context-internal">
           <Header />
           <ClubFeeBanner />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 p-4 pt-6 md:p-8">
+          <main
+            className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 p-4 sm:p-5 md:p-6 lg:p-8"
+            data-context="internal"
+          >
             {children}
           </main>
         </SidebarInset>

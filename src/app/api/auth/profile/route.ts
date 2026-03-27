@@ -8,6 +8,13 @@ import { NextResponse } from 'next/server';
 import { verifyIdToken } from '@/lib/auth-server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 
+/** Orden de membresía: admin antes que entrenador (evita UI/permisos mal alineados si hay varias escuelas). */
+function membershipRolePriority(role: string): number {
+  const order = ['admin_subcomision', 'encargado_deportivo', 'editor', 'viewer', 'player'] as const;
+  const i = order.indexOf(role as (typeof order)[number]);
+  return i === -1 ? 99 : i;
+}
+
 export async function GET(request: Request) {
   try {
     const authHeader = request.headers.get('Authorization');
@@ -77,6 +84,7 @@ export async function GET(request: Request) {
     }
 
     if (memberships.length > 0) {
+      memberships.sort((a, b) => membershipRolePriority(a.role) - membershipRolePriority(b.role));
       const first = memberships[0];
       return NextResponse.json({
         profile: {

@@ -5,6 +5,7 @@ import { getAuth } from "firebase/auth";
 import { useCallback } from "react";
 import { AttendanceSheet } from "@/components/attendance/AttendanceSheet";
 import { ClipboardCheck } from "lucide-react";
+import { SubcomisionModuleGuard } from "@/components/subcomision/SubcomisionModuleGuard";
 
 export default function AttendancePage() {
   const { activeSchoolId, isReady } = useUserProfile();
@@ -43,19 +44,21 @@ export default function AttendancePage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 min-w-0">
-      <div className="flex items-center gap-3">
-        <ClipboardCheck className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight font-headline">
-            Planilla de asistencia
-          </h1>
-          <p className="text-muted-foreground">
-            Marcá los jugadores que faltaron al entrenamiento.
-          </p>
+    <SubcomisionModuleGuard moduleKey="attendance">
+      <div className="flex flex-col gap-6 min-w-0">
+        <div className="flex items-center gap-3">
+          <ClipboardCheck className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">
+              Planilla de asistencia
+            </h1>
+            <p className="text-muted-foreground">
+              Marcá los jugadores que faltaron al entrenamiento.
+            </p>
+          </div>
         </div>
+        <AttendanceSheet subcomisionId={activeSchoolId} getToken={getToken} />
       </div>
-      <AttendanceSheet subcomisionId={activeSchoolId} getToken={getToken} />
-    </div>
+    </SubcomisionModuleGuard>
   );
 }

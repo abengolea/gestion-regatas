@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Video } from "lucide-react";
 import { useState } from "react";
 import { RecordOrUploadVideoDialog } from "@/components/videos/RecordOrUploadVideoDialog";
+import { SubcomisionModuleGuard } from "@/components/subcomision/SubcomisionModuleGuard";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function RecordVideoPage() {
@@ -33,38 +34,40 @@ export default function RecordVideoPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Grabar video</h1>
-        <p className="text-muted-foreground mt-1">
-          Añade videos a la videoteca de un jugador: graba con la cámara o sube un archivo.
-        </p>
+    <SubcomisionModuleGuard moduleKey="recordVideo">
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight font-headline">Grabar video</h1>
+          <p className="text-muted-foreground mt-1">
+            Añade videos a la videoteca de un jugador: graba con la cámara o sube un archivo.
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-headline">Videoteca de jugadores</CardTitle>
+            <CardDescription>
+              Elige un jugador y graba o sube un video para documentar habilidades y entrenamientos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => setDialogOpen(true)} size="lg">
+              <Video className="mr-2 h-5 w-5" />
+              Grabar o subir video
+            </Button>
+          </CardContent>
+        </Card>
+
+        <RecordOrUploadVideoDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          subcomisionId={activeSchoolId}
+          initialPlayerId={null}
+          initialPlayerName=""
+          embedded={false}
+          onSuccess={() => setDialogOpen(false)}
+        />
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Videoteca de jugadores</CardTitle>
-          <CardDescription>
-            Elige un jugador y graba o sube un video para documentar habilidades y entrenamientos.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={() => setDialogOpen(true)} size="lg">
-            <Video className="mr-2 h-5 w-5" />
-            Grabar o subir video
-          </Button>
-        </CardContent>
-      </Card>
-
-      <RecordOrUploadVideoDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        subcomisionId={activeSchoolId}
-        initialPlayerId={null}
-        initialPlayerName=""
-        embedded={false}
-        onSuccess={() => setDialogOpen(false)}
-      />
-    </div>
+    </SubcomisionModuleGuard>
   );
 }

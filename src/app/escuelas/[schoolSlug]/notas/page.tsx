@@ -3,6 +3,9 @@ import { listPosts, getSchoolBySlug } from "@/lib/posts/server";
 import { NotasFeed } from "@/components/notas/NotasFeed";
 import type { Metadata } from "next";
 
+/** Misma razón que /notas: no pre-renderizar contra Firestore en `next build`. */
+export const dynamic = "force-dynamic";
+
 const PAGE_SIZE = 12;
 
 type Props = {

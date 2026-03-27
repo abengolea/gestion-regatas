@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { buildEmailHtml, escapeHtml, htmlToPlainText, sendMailDoc } from "@/lib/email";
 import { useFirestore } from "@/firebase";
 import { useState } from "react";
+import { SubcomisionModuleGuard } from "@/components/subcomision/SubcomisionModuleGuard";
 
 export default function MedicalRecordsPage() {
   const { isReady, activeSchoolId, profile } = useUserProfile();
@@ -97,6 +98,7 @@ export default function MedicalRecordsPage() {
   }
 
   return (
+    <SubcomisionModuleGuard moduleKey="medicalRecords">
     <div className="flex flex-col gap-6 min-w-0">
       <div>
         <h1 className="text-2xl font-bold tracking-tight font-headline sm:text-3xl">
@@ -239,6 +241,7 @@ export default function MedicalRecordsPage() {
         </CardContent>
       </Card>
     </div>
+    </SubcomisionModuleGuard>
   );
 }
 

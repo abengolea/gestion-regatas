@@ -45,6 +45,19 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: NOTIFICASHUB_INTERNAL_SECRET
+    secret: notificashub-internal-secret
+  # URL pública del deploy de NotificasHub (sin / final). Ajustar en yaml si cambia el host.
+  - variable: NOTIFICASHUB_URL
+    value: "https://notificashub--studio-3864746689-59018.us-east4.hosted.app"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_NOTIFICASHUB_ACTIVO
+    value: "true"
+    availability:
+      - BUILD
+      - RUNTIME
   # Mercado Pago (cuando lo actives en Regatas): MERCADOPAGO_CLIENT_ID + secrets
   # mercadopago-client-secret y mercadopago-platform-access-token vía
   # firebase apphosting:secrets:set … y grantaccess al backend gestion-regatas.

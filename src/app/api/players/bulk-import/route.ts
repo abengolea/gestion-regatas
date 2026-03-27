@@ -9,6 +9,7 @@ import { getAdminFirestore } from "@/lib/firebase-admin";
 import { verifyIdToken } from "@/lib/auth-server";
 import { Timestamp } from "firebase-admin/firestore";
 import * as XLSX from "xlsx";
+import { registerPhoneWithNotificasHub } from "@/lib/whatsapp/notificashub-register-user";
 
 const EXCEL_COLUMN_ALIASES: Record<string, string[]> = {
   nombre: ["nombre", "Nombre", "NOMBRE", "nombre_socio", "Nombres", "firstName", "first_name"],
@@ -276,6 +277,10 @@ export async function POST(request: Request) {
         created++;
       }
       await batch.commit();
+
+      await Promise.allSettled(
+        chunk.map((item) => registerPhoneWithNotificasHub(item.tutorContact.phone))
+      );
     }
 
     return NextResponse.json({

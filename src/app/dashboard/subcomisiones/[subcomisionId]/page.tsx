@@ -6,14 +6,15 @@ import { useDoc, useUserProfile } from '@/firebase';
 import type { Subcomision } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronLeft, Shield, Users, MapPin, Tags } from 'lucide-react';
+import { ChevronLeft, Shield, Users, MapPin, Tags, SlidersHorizontal, Ticket } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SubcomisionUsersList } from '@/components/admin/SchoolUsersList';
 import { CategoriasTab } from '@/components/viajes/CategoriasTab';
 import { useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlayerTable } from '@/components/players/PlayerTable';
-
+import { SubcomisionModulesEditor } from '@/components/admin/SubcomisionModulesEditor';
+import { isSubcomisionModuleEnabled } from '@/lib/subcomision-modules';
 export default function SubcomisionDashboardPage() {
   const params = useParams();
   const router = useRouter();
@@ -80,32 +81,52 @@ export default function SubcomisionDashboardPage() {
         </Card>
       ) : (
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 gap-1 p-1 h-auto md:h-10 bg-card">
-            <TabsTrigger value="users" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5">
+          <TabsList className="flex w-full flex-wrap gap-1 p-1 h-auto md:h-10 bg-card">
+            <TabsTrigger value="users" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 flex-1 min-w-[100px]">
               <Shield className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
               <span className="truncate">Responsables</span>
             </TabsTrigger>
-            <TabsTrigger value="players" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5">
+            <TabsTrigger value="players" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 flex-1 min-w-[100px]">
               <Users className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
               <span className="truncate">Jugadores</span>
             </TabsTrigger>
-            <TabsTrigger value="categorias" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5">
-              <Tags className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-              <span className="truncate">Categorías</span>
-            </TabsTrigger>
-            <TabsTrigger value="viajes" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5" asChild>
-              <Link href={`/dashboard/subcomisiones/${subcomisionId}/viajes`}>
-                <MapPin className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-                <span className="truncate">Viajes</span>
-              </Link>
-            </TabsTrigger>
+            {isSubcomisionModuleEnabled(school.moduleFlags, 'viajes') ? (
+              <TabsTrigger value="categorias" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 flex-1 min-w-[100px]">
+                <Tags className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                <span className="truncate">Categorías</span>
+              </TabsTrigger>
+            ) : null}
+            {isSubcomisionModuleEnabled(school.moduleFlags, 'viajes') ? (
+              <TabsTrigger value="viajes" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 flex-1 min-w-[100px]" asChild>
+                <Link href={`/dashboard/subcomisiones/${subcomisionId}/viajes`}>
+                  <MapPin className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                  <span className="truncate">Viajes</span>
+                </Link>
+              </TabsTrigger>
+            ) : null}
+            {isSubcomisionModuleEnabled(school.moduleFlags, 'ventaEntradas') ? (
+              <TabsTrigger value="entradas" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 flex-1 min-w-[100px]" asChild>
+                <Link href={`/dashboard/subcomisiones/${subcomisionId}/entradas`}>
+                  <Ticket className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                  <span className="truncate">Entradas</span>
+                </Link>
+              </TabsTrigger>
+            ) : null}
+            {isSuperAdmin ? (
+              <TabsTrigger value="modules" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 flex-1 min-w-[100px]">
+                <SlidersHorizontal className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                <span className="truncate">Funcionalidades</span>
+              </TabsTrigger>
+            ) : null}
           </TabsList>
           <TabsContent value="users">
             <SubcomisionUsersList subcomisionId={subcomisionId} />
           </TabsContent>
-          <TabsContent value="categorias">
-            <CategoriasTab subcomisionId={subcomisionId} />
-          </TabsContent>
+          {isSubcomisionModuleEnabled(school.moduleFlags, 'viajes') ? (
+            <TabsContent value="categorias">
+              <CategoriasTab subcomisionId={subcomisionId} />
+            </TabsContent>
+          ) : null}
           <TabsContent value="players">
             <Card>
               <CardHeader className="pb-2">
@@ -119,6 +140,15 @@ export default function SubcomisionDashboardPage() {
               </CardContent>
             </Card>
           </TabsContent>
+          {isSuperAdmin ? (
+            <TabsContent value="modules">
+              <SubcomisionModulesEditor
+                schoolId={subcomisionId}
+                school={school}
+                schoolLoading={schoolLoading}
+              />
+            </TabsContent>
+          ) : null}
         </Tabs>
       )}
     </div>

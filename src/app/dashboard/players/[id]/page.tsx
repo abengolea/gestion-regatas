@@ -10,13 +10,14 @@ import { Cake, User, Contact, Bot, FilePlus, ArrowLeft, UserX, ClipboardCheck, V
 import { calculateAge, isPlayerProfileComplete } from "@/lib/utils";
 import { useDoc, useUserProfile, useCollection, useUser, useFirebase } from "@/firebase";
 import { getAuth } from "firebase/auth";
-import type { Socio, Evaluation } from "@/lib/types";
+import type { Socio, Evaluation, Subcomision } from "@/lib/types";
+import { isSubcomisionModuleEnabled } from "@/lib/subcomision-modules";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SummaryTab } from "@/components/players/PlayerProfile/SummaryTab";
 import { MedicalRecordField } from "@/components/players/MedicalRecordField";
 import { isMedicalRecordApproved, isMedicalRecordRejected } from "@/lib/utils";
 import { AnalyticsTab } from "@/components/players/PlayerProfile/AnalyticsTab";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AddEvaluationSheet } from "@/components/evaluations/AddEvaluationSheet";
 import { EvaluationsTab } from "@/components/evaluations/EvaluationsTab";
 import { PlayerVideoteca } from "@/components/videos/PlayerVideoteca";
@@ -72,10 +73,75 @@ export default function PlayerProfilePage() {
       profileReady && schoolId ? `subcomisiones/${schoolId}/socios/${id}` : ''
   );
 
+  const { data: subcomisionDoc } = useDoc<Subcomision>(
+    profileReady && schoolId ? `subcomisiones/${schoolId}` : ""
+  );
+  const mf = subcomisionDoc?.moduleFlags;
+  const showEvaluationsTab =
+    isSuperAdmin || isSubcomisionModuleEnabled(mf, "evaluations");
+  const showPhysicalTab =
+    isSuperAdmin || isSubcomisionModuleEnabled(mf, "physicalEvaluations");
+  const showVideotecaTab =
+    isSuperAdmin || isSubcomisionModuleEnabled(mf, "videoteca");
+  const showAttendanceTab =
+    isSuperAdmin || isSubcomisionModuleEnabled(mf, "attendance");
+  const showAnalyticsTab =
+    isSuperAdmin || isSubcomisionModuleEnabled(mf, "analytics");
+  const showMedicalInSummary =
+    isSuperAdmin || isSubcomisionModuleEnabled(mf, "medicalRecords");
+  const showPaymentsCard =
+    isSuperAdmin || isSubcomisionModuleEnabled(mf, "payments");
+
   const { data: evaluations, loading: evalsLoading, error: evalsError } = useCollection<Evaluation>(
     profileReady && schoolId ? `subcomisiones/${schoolId}/evaluations` : '',
     { where: ['playerId', '==', id], orderBy: ['date', 'desc'], limit: 20 }
   );
+
+  const tabFromUrl = searchParams.get("tab");
+  const defaultTab =
+    tabFromUrl === "summary"
+      ? "summary"
+      : tabFromUrl === "evaluations" && showEvaluationsTab
+        ? "evaluations"
+        : tabFromUrl === "physical" && showPhysicalTab
+          ? "physical"
+          : tabFromUrl === "videoteca" && showVideotecaTab
+            ? "videoteca"
+            : tabFromUrl === "attendance" && showAttendanceTab
+              ? "attendance"
+              : tabFromUrl === "analytics" &&
+                  showAnalyticsTab &&
+                  !isViewingAsPlayer
+                ? "analytics"
+                : "summary";
+
+  useEffect(() => {
+    if (!schoolId || !id) return;
+    const t = searchParams.get("tab");
+    if (!t || t === "summary") return;
+    const allowed =
+      (t === "evaluations" && showEvaluationsTab) ||
+      (t === "physical" && showPhysicalTab) ||
+      (t === "videoteca" && showVideotecaTab) ||
+      (t === "attendance" && showAttendanceTab) ||
+      (t === "analytics" && showAnalyticsTab && !isViewingAsPlayer);
+    if (!allowed) {
+      const q = new URLSearchParams(searchParams.toString());
+      q.set("tab", "summary");
+      router.replace(`/dashboard/players/${id}?${q.toString()}`);
+    }
+  }, [
+    schoolId,
+    id,
+    searchParams,
+    router,
+    showEvaluationsTab,
+    showPhysicalTab,
+    showVideotecaTab,
+    showAttendanceTab,
+    showAnalyticsTab,
+    isViewingAsPlayer,
+  ]);
 
   const isLoading = playerLoading || !profileReady || evalsLoading;
 
@@ -243,6 +309,7 @@ export default function PlayerProfilePage() {
 
   return (
     <>
+    {showEvaluationsTab && (
     <AddEvaluationSheet
       socioId={id}
       subcomisionId={schoolId!}
@@ -255,6 +322,7 @@ export default function PlayerProfilePage() {
       evaluationsSummary={evaluations?.map((e) => ({ date: e.date, coachComments: e.coachComments ?? "" })) ?? []}
       editingEvaluation={editingEvaluation}
     />
+    )}
     <EditPlayerDialog
       player={player}
       subcomisionId={schoolId!}
@@ -311,7 +379,7 @@ export default function PlayerProfilePage() {
           <Button variant="outline" onClick={() => setEditPlayerOpen(true)}>
             Editar Perfil
           </Button>
-          {!isViewingAsPlayer && (
+          {!isViewingAsPlayer && showEvaluationsTab && (
             <Button onClick={() => setEvalSheetOpen(true)}>
               <FilePlus className="mr-2 h-4 w-4" />
               Nueva Evaluación
@@ -372,45 +440,37 @@ export default function PlayerProfilePage() {
         </Alert>
       )}
 
-      <Tabs
-        defaultValue={
-          (() => {
-            const t = searchParams.get("tab");
-            return t && ["summary", "evaluations", "physical", "videoteca", "attendance", "analytics"].includes(t)
-              ? t
-              : "summary";
-          })()
-        }
-        className="w-full"
-      >
-        {/* Móvil: grid 3 columnas (2 filas) para usar todo el ancho; md+: una fila */}
-        <TabsList
-          className={`
-            w-full bg-card grid grid-cols-3 gap-1 p-1 h-auto md:h-10
-            ${isViewingAsPlayer ? "md:grid-cols-5" : "md:grid-cols-6"}
-          `}
-        >
+      <Tabs defaultValue={defaultTab} className="w-full">
+        <TabsList className="w-full flex flex-wrap gap-1 h-auto bg-card p-1 justify-start">
           <TabsTrigger value="summary" className="text-xs px-2 py-2 md:text-sm md:px-3 md:py-1.5">
             Resumen
           </TabsTrigger>
+          {showEvaluationsTab && (
           <TabsTrigger value="evaluations" className="text-xs px-2 py-2 md:text-sm md:px-3 md:py-1.5">
             <span className="hidden sm:inline">Evaluaciones</span>
             <span className="sm:hidden">Eval.</span>
           </TabsTrigger>
+          )}
+          {showPhysicalTab && (
           <TabsTrigger value="physical" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 md:gap-2">
             <span className="hidden sm:inline">Físicas</span>
             <span className="sm:hidden">Fís.</span>
             <Activity className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
           </TabsTrigger>
+          )}
+          {showVideotecaTab && (
           <TabsTrigger value="videoteca" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 md:gap-2">
             <Video className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
             <span className="truncate">Videoteca</span>
           </TabsTrigger>
+          )}
+          {showAttendanceTab && (
           <TabsTrigger value="attendance" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 md:gap-2">
             <ClipboardCheck className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
             <span className="truncate">Asistencia</span>
           </TabsTrigger>
-          {!isViewingAsPlayer && (
+          )}
+          {!isViewingAsPlayer && showAnalyticsTab && (
           <TabsTrigger value="analytics" className="text-xs px-2 py-2 gap-1 md:text-sm md:px-3 md:py-1.5 md:gap-2">
             <Bot className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
             <span className="truncate">Análisis IA</span>
@@ -419,7 +479,7 @@ export default function PlayerProfilePage() {
           )}
         </TabsList>
         <TabsContent value="summary">
-          {isViewingAsPlayer && !isMedicalRecordApproved(player) && (
+          {showMedicalInSummary && isViewingAsPlayer && !isMedicalRecordApproved(player) && (
             <Alert className={`mb-4 ${isMedicalRecordRejected(player) ? "border-red-500 bg-red-50 dark:bg-red-950/40 dark:border-red-500" : "border-amber-500 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-500"}`}>
               <FileHeart className={`h-4 w-4 ${isMedicalRecordRejected(player) ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`} />
               <AlertTitle>{isMedicalRecordRejected(player) ? "Ficha médica rechazada" : "Ficha médica obligatoria"}</AlertTitle>
@@ -444,6 +504,7 @@ export default function PlayerProfilePage() {
             subcomisionId={schoolId ?? undefined}
             socioId={id}
           />
+          {showPaymentsCard && (
           <div className="mt-4">
             <PlayerPaymentStatusCard
               getToken={getToken}
@@ -451,6 +512,8 @@ export default function PlayerProfilePage() {
               schoolId={isViewingAsPlayer ? undefined : schoolId ?? undefined}
             />
           </div>
+          )}
+          {showMedicalInSummary && (
           <Card className="mt-4">
             <CardHeader>
               <CardTitle className="font-headline">Ficha médica</CardTitle>
@@ -473,7 +536,9 @@ export default function PlayerProfilePage() {
               />
             </CardContent>
           </Card>
+          )}
         </TabsContent>
+        {showEvaluationsTab && (
         <TabsContent value="evaluations">
           {showLockedContent ? (
             <Card className="border-dashed">
@@ -502,6 +567,8 @@ export default function PlayerProfilePage() {
             />
           )}
         </TabsContent>
+        )}
+        {showPhysicalTab && (
         <TabsContent value="physical">
           {showLockedContent ? (
             <Card className="border-dashed">
@@ -518,6 +585,8 @@ export default function PlayerProfilePage() {
             <PhysicalAssessmentsTab player={playerWithSchool} subcomisionId={schoolId!} isViewingAsPlayer={isViewingAsPlayer} />
           )}
         </TabsContent>
+        )}
+        {showVideotecaTab && (
         <TabsContent value="videoteca">
           {showLockedContent ? (
             <Card className="border-dashed">
@@ -540,10 +609,13 @@ export default function PlayerProfilePage() {
             />
           )}
         </TabsContent>
+        )}
+        {showAttendanceTab && (
         <TabsContent value="attendance">
           <AttendanceHistory subcomisionId={schoolId!} socioId={id} />
         </TabsContent>
-        {!isViewingAsPlayer && (
+        )}
+        {!isViewingAsPlayer && showAnalyticsTab && (
         <TabsContent value="analytics">
           <AnalyticsTab player={playerWithSchool} evaluations={evaluations || []} />
         </TabsContent>

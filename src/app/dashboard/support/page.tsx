@@ -1,5 +1,12 @@
-import { SupportCenter } from '@/components/support/SupportCenter';
+"use client";
+
+import { SubcomisionModuleGuard } from "@/components/subcomision/SubcomisionModuleGuard";
+import { SupportCenter } from "@/components/support/SupportCenter";
 
 export default function SupportPage() {
-  return <SupportCenter />;
+  return (
+    <SubcomisionModuleGuard moduleKey="support">
+      <SupportCenter />
+    </SubcomisionModuleGuard>
+  );
 }

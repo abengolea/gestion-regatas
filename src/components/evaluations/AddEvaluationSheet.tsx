@@ -377,10 +377,10 @@ export function AddEvaluationSheet({ socioId: socioIdProp, subcomisionId: subcom
                     const playerEmail = socioData?.email?.trim?.();
                     const firstName = socioData?.firstName ?? playerName ?? "jugador";
                     if (playerEmail) {
-                        const subject = "Nueva evaluación - Regatas+";
+                        const subject = "Nueva evaluación - Club de Regatas";
                         const contentHtml = `<p>Hola <strong>${escapeHtml(firstName)}</strong>,</p><p>Tu entrenador cargó una nueva evaluación. Entrá al panel para verla.</p><p><a href="${typeof window !== "undefined" ? window.location.origin : ""}/dashboard" style="color: hsl(var(--primary)); font-weight: bold;">Ver mi perfil</a></p>`;
                         const html = buildEmailHtml(contentHtml, {
-                            title: "Escuelas River",
+                            title: "Club de Regatas",
                             greeting: "Tenés una novedad en tu perfil.",
                             baseUrl: typeof window !== "undefined" ? window.location.origin : "",
                         });

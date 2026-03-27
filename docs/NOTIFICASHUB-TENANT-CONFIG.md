@@ -22,6 +22,15 @@ En el proyecto Firebase de NotificasHub, crear:
 - `webhookUrl`: URL de producción. En desarrollo usar ngrok o similar.
 - `internalSecret`: Debe coincidir con `NOTIFICASHUB_INTERNAL_SECRET` en `.env`.
 
+## 1b. Registro de teléfono (`user_memberships`)
+
+La app Regatas+ llama al hub cuando se guarda o actualiza el celular del tutor (API `players/update`, importación masiva). El hub debe exponer:
+
+- `POST /api/register-user` — body `{ "phone": "<solo dígitos AR normalizados>", "tenantId": "regatas" }`, header `x-internal-secret`.
+- Opcional: `DELETE /api/register-user` — mismo cuerpo y header, para baja si borran el número (idempotente).
+
+Variables en Regatas: `NOTIFICASHUB_URL`, `NOTIFICASHUB_INTERNAL_SECRET` (servidor; no commitear).
+
 ## 2. Cloud Function onSocioCreated
 
 La función `onSocioCreated` registra automáticamente la membresía cuando se crea un socio con celular. Requiere configuración en Firebase:

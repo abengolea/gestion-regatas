@@ -5,6 +5,7 @@ import { getAuth } from "firebase/auth";
 import { useCallback } from "react";
 import { TrainingSchedulesPanel } from "@/components/training/TrainingSchedulesPanel";
 import { Dumbbell } from "lucide-react";
+import { SubcomisionModuleGuard } from "@/components/subcomision/SubcomisionModuleGuard";
 
 export default function TrainingSchedulesPage() {
   const { profile, isReady } = useUserProfile();
@@ -42,20 +43,22 @@ export default function TrainingSchedulesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 min-w-0">
-      <div className="flex items-center gap-3">
-        <Dumbbell className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight font-headline">
-            Horarios de entrenamiento
-          </h1>
-          <p className="text-muted-foreground">
-            Definí cuotas, categorías y entrenador asignado por día. Usá el rango de categorías para
-            agrupar de SUB-X a SUB-Y sin marcar una por una.
-          </p>
+    <SubcomisionModuleGuard moduleKey="trainingSchedules">
+      <div className="flex flex-col gap-6 min-w-0">
+        <div className="flex items-center gap-3">
+          <Dumbbell className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">
+              Horarios de entrenamiento
+            </h1>
+            <p className="text-muted-foreground">
+              Definí cuotas, categorías y entrenador asignado por día. Usá el rango de categorías para
+              agrupar de SUB-X a SUB-Y sin marcar una por una.
+            </p>
+          </div>
         </div>
+        <TrainingSchedulesPanel subcomisionId={profile.activeSchoolId} getToken={getToken} />
       </div>
-      <TrainingSchedulesPanel subcomisionId={profile.activeSchoolId} getToken={getToken} />
-    </div>
+    </SubcomisionModuleGuard>
   );
 }

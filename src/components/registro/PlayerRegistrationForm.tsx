@@ -14,6 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
   SelectContent,
@@ -240,7 +241,7 @@ export function PlayerRegistrationForm() {
             <FormItem>
               <FormLabel>Contraseña</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="Mínimo 6 caracteres" {...field} />
+                <PasswordInput placeholder="Mínimo 6 caracteres" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -254,7 +255,7 @@ export function PlayerRegistrationForm() {
             <FormItem>
               <FormLabel>Confirmar contraseña</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="Repetí la contraseña" {...field} />
+                <PasswordInput placeholder="Repetí la contraseña" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

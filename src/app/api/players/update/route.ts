@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { getAdminFirestore } from "@/lib/firebase-admin";
 import { verifyIdToken } from "@/lib/auth-server";
 import { Timestamp } from "firebase-admin/firestore";
+import { syncNotificasHubFromPlayerDoc } from "@/lib/whatsapp/notificashub-register-user";
 
 type UpdatePayload = {
   schoolId?: string;
@@ -29,6 +30,7 @@ type UpdatePayload = {
     peso_kg: number | null;
     mano_dominante: string | null;
     posicion_preferida: string | null;
+    esSocio?: boolean;
   };
   oldEmail?: string | null;
 };
@@ -96,7 +98,15 @@ export async function POST(request: Request) {
     };
 
     const playerRef = db.collection('subcomisiones').doc(schoolId).collection('socios').doc(playerId);
+    const prevSnap = await playerRef.get();
+    const prevData = prevSnap.exists ? prevSnap.data() : undefined;
+
     await playerRef.update(updateData);
+
+    void syncNotificasHubFromPlayerDoc(
+      prevData as { tutorContact?: { phone?: string }; telefono?: string; celularPadre?: string } | undefined,
+      raw.tutorContact?.phone ?? ""
+    ).catch((e) => console.error("[players/update] NotificasHub sync", e));
 
     const newEmailNorm = raw.email?.trim().toLowerCase() || null;
     const oldEmailNorm = oldEmail?.trim().toLowerCase() || null;

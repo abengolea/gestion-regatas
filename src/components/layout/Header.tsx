@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Search, Bell, LogOut, Cake, UserCheck } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth, useUser, useUserProfile, useCollection } from "@/firebase";
+import { usePendingAccessRequests } from "@/hooks/use-pending-access-requests";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import Link from "next/link";
@@ -45,9 +47,8 @@ export function Header() {
     canListSchoolCollections ? `schools/${effectiveSchoolId}/pendingPlayers` : "",
     {}
   );
-  const { data: accessRequests } = useCollection(
-    canListSchoolCollections ? "accessRequests" : "",
-    { where: ["status", "==", "pending"] }
+  const { data: accessRequests } = usePendingAccessRequests(
+    Boolean(isReady && effectiveSchoolId && isStaff)
   );
   const playersList = (socios ?? []).filter((p) => !p.archived);
   const birthdaysToday = playersList.filter((p) => isBirthdayToday(p.birthDate));
@@ -128,7 +129,7 @@ export function Header() {
                         <li key={player.id}>
                           <button
                             type="button"
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset flex items-center gap-2"
                             onClick={() => handleSelectPlayer(player.id)}
                           >
                             <Avatar className="h-6 w-6 shrink-0">
@@ -155,9 +156,10 @@ export function Header() {
           </div>
         )}
       </div>
+      <ThemeToggle />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="rounded-full relative">
+          <Button variant="ghost" size="icon" className="rounded-full relative shrink-0">
             <Bell className="h-5 w-5" />
             {(birthdayCount > 0 || solicitudesCount > 0) && (
               <Badge
@@ -221,7 +223,7 @@ export function Header() {
           <Button variant="secondary" size="icon" className="rounded-full">
             <Avatar className="h-8 w-8">
               {user?.photoURL ? (
-                <AvatarImage src={user.photoURL} alt={user.displayName || "User"} />
+                <AvatarImage src={user.photoURL} alt={user.displayName || "Usuario"} />
               ) : null}
               <AvatarFallback>
                 {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
@@ -236,7 +238,9 @@ export function Header() {
           <DropdownMenuItem asChild>
              <Link href="/dashboard/settings">Ajustes</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem>Soporte</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard/support">Soporte</Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />

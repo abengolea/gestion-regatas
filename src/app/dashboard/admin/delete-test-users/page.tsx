@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Trash2, AlertTriangle, UserX } from "lucide-react";
+import { Loader2, Trash2, AlertTriangle, UserX, ChevronLeft } from "lucide-react";
 import { useCollection, useUserProfile, useFirebase } from "@/firebase";
 import { getAuth } from "firebase/auth";
 import type { PlatformUser } from "@/lib/types";
@@ -134,6 +135,12 @@ export default function DeleteTestUsersPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Button variant="ghost" size="sm" className="w-fit -ml-2 text-muted-foreground" asChild>
+        <Link href="/dashboard/admin/config">
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Configuración global
+        </Link>
+      </Button>
       <div>
         <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-2">
           <UserX className="h-8 w-8" />

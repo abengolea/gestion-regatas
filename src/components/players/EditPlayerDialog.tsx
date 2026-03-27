@@ -32,6 +32,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { CalendarIcon, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { cn, getMissingProfileFieldLabels, toDateSafe } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -67,6 +68,8 @@ const playerSchema = z.object({
     ])
     .optional(),
   genero: z.enum(["masculino", "femenino"]).optional(),
+  /** Socio del club con Regatas+ (beneficios en comercios). false/undefined = socio deportivo (solo escuela). */
+  esSocio: z.boolean().optional(),
 });
 
 const POSICION_VALIDAS = ["arquero", "defensor", "lateral", "mediocampista", "mediocampo", "delantero", "extremo", "base", "escolta", "ala", "ala_pivot", "pivot"] as const;
@@ -127,6 +130,7 @@ export function EditPlayerDialog({
       mano_dominante: (player.mano_dominante ?? (player as unknown as { pie_dominante?: "derecho" | "izquierdo" | "ambidiestro" }).pie_dominante) ?? undefined,
       posicion_preferida: normalizePosicion(player.posicion_preferida),
       genero: player.genero ?? undefined,
+      esSocio: player.esSocio ?? false,
     },
   });
 
@@ -208,6 +212,7 @@ export function EditPlayerDialog({
         return normalized ?? null;
       })(),
       genero: (values.genero && values.genero.trim()) ? values.genero : null,
+      esSocio: values.esSocio ?? false,
     };
 
     const showSuccess = () => {
@@ -255,7 +260,7 @@ export function EditPlayerDialog({
     try {
       const token = await user.getIdToken();
       const birthDate = updateData.birthDate as Timestamp;
-      const res = await fetch("/api/socios/update", {
+      const res = await fetch("/api/players/update", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -491,31 +496,54 @@ export function EditPlayerDialog({
                     )}
                   />
                   {!isPlayerEditing && (
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Estado</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona un estado" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="active">Activo</SelectItem>
-                            <SelectItem value="inactive">Inactivo</SelectItem>
-                            <SelectItem value="suspended">Suspendido por mora</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Estado</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecciona un estado" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="active">Activo</SelectItem>
+                                <SelectItem value="inactive">Inactivo</SelectItem>
+                                <SelectItem value="suspended">Suspendido por mora</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="esSocio"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel>Socio del club (Regatas+)</FormLabel>
+                              <FormDescription>
+                                Si está activado, puede usar beneficios en comercios adheridos (QR Regatas+). Si no, es solo socio deportivo.
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value ?? false}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
                   )}
                   <FormField
                     control={form.control}

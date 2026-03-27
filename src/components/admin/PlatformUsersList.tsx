@@ -21,8 +21,8 @@ import {
 } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Loader2, Shield, ShieldOff, Building2 } from "lucide-react";
-import { useCollection, useFirestore, useUserProfile } from "@/firebase";
-import { doc, updateDoc, collectionGroup, getDocs, collection } from "firebase/firestore";
+import { useFirestore, useUserProfile } from "@/firebase";
+import { doc, updateDoc } from "firebase/firestore";
 import type { PlatformUser, Subcomision, SubcomisionUser } from "@/lib/types";
 import { writeAuditLog } from "@/lib/audit";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,67 +53,157 @@ type UserRoleInfo = {
     socioId?: string;
 };
 
+function isUserRoleInfoRole(r: string): r is UserRoleInfo["role"] {
+    return ["admin_subcomision", "encargado_deportivo", "editor", "viewer", "player"].includes(r);
+}
+
 type PlatformUsersListProps = {
     subcomisiones?: Subcomision[] | null;
 };
 
 export function PlatformUsersList({ subcomisiones = [] }: PlatformUsersListProps) {
-    const { data: platformUsers, loading: usersLoading } = useCollection<PlatformUser>('platformUsers', { orderBy: ['createdAt', 'desc'] });
-    const { user: currentUser } = useUserProfile();
+    const { user: currentUser, isSuperAdmin } = useUserProfile();
     const firestore = useFirestore();
     const { toast } = useToast();
-    
+
+    const [platformUsers, setPlatformUsers] = useState<PlatformUser[] | null>(null);
+    const [usersLoading, setUsersLoading] = useState(true);
+
     const [actionToConfirm, setActionToConfirm] = useState<UserAction | null>(null);
     const [isUpdating, setIsUpdating] = useState(false);
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>("all");
 
-    // Cuando hay un filtro por escuela, cargamos los usuarios de esa escuela (staff: admin, encargado_deportivo) con role y displayName
-    const schoolUsersPath = selectedSchoolId && selectedSchoolId !== "all" ? `subcomisiones/${selectedSchoolId}/users` : "";
-    const { data: schoolUsers } = useCollection<SubcomisionUser & { id: string }>(schoolUsersPath);
+    const [schoolUsers, setSchoolUsers] = useState<(SubcomisionUser & { id: string })[] | null>(null);
 
-    // Para vista "Todas las escuelas": cargar roles desde collectionGroup + socioLogins
     const [allRolesMap, setAllRolesMap] = useState<Map<string, UserRoleInfo>>(new Map());
-    const [playerMap, setPlayerMap] = useState<Map<string, { schoolId: string; playerId: string }>>(new Map());
 
     useEffect(() => {
-        if (selectedSchoolId !== "all") return;
-        const load = async () => {
-            const rolesMap = new Map<string, UserRoleInfo>();
-            const pMap = new Map<string, { schoolId: string; playerId: string }>();
+        if (!currentUser || !isSuperAdmin) {
+            setPlatformUsers(null);
+            setUsersLoading(false);
+            return;
+        }
+        let cancelled = false;
+        const run = async () => {
+            setUsersLoading(true);
             try {
-                const [usersSnap, loginsSnap] = await Promise.all([
-                    getDocs(collectionGroup(firestore!, "users")),
-                    getDocs(collection(firestore!, "playerLogins")),
-                ]);
-                usersSnap.docs.forEach((d) => {
-                    const schoolId = d.ref.parent.parent?.id;
-                    if (!schoolId) return;
-                    const data = d.data() as SubcomisionUser;
-                    rolesMap.set(d.id, {
-                        role: data.role,
-                        displayName: data.displayName,
-                        subcomisionId: schoolId,
-                        socioId: (data as { socioId?: string }).socioId,
-                    });
+                const token = await currentUser.getIdToken();
+                const res = await fetch("/api/admin/platform-users", {
+                    headers: { Authorization: `Bearer ${token}` },
                 });
-                loginsSnap.docs.forEach((d) => {
-                    const data = d.data() as { schoolId: string; playerId: string };
-                    if (data.schoolId && data.playerId) pMap.set(d.id, { schoolId: data.schoolId, playerId: data.playerId });
-                });
-                setAllRolesMap(rolesMap);
-                setPlayerMap(pMap);
+                if (cancelled) return;
+                if (!res.ok) {
+                    setPlatformUsers([]);
+                    return;
+                }
+                const rows = (await res.json()) as Array<{
+                    id: string;
+                    email: string;
+                    gerente_club: boolean;
+                    super_admin?: boolean;
+                    createdAt: string;
+                }>;
+                setPlatformUsers(
+                    rows.map((r) => ({
+                        id: r.id,
+                        email: r.email,
+                        gerente_club: r.gerente_club,
+                        super_admin: r.super_admin,
+                        createdAt: new Date(r.createdAt),
+                    }))
+                );
             } catch {
-                setAllRolesMap(new Map());
-                setPlayerMap(new Map());
+                if (!cancelled) setPlatformUsers([]);
+            } finally {
+                if (!cancelled) setUsersLoading(false);
             }
         };
-        load();
-    }, [selectedSchoolId, firestore]);
+        void run();
+        return () => {
+            cancelled = true;
+        };
+    }, [currentUser, isSuperAdmin]);
+
+    useEffect(() => {
+        if (!currentUser || !isSuperAdmin || selectedSchoolId === "all") {
+            setSchoolUsers(null);
+            return;
+        }
+        let cancelled = false;
+        const run = async () => {
+            try {
+                const token = await currentUser.getIdToken();
+                const res = await fetch(
+                    `/api/admin/subcomision-users?subcomisionId=${encodeURIComponent(selectedSchoolId)}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                if (cancelled) return;
+                if (!res.ok) {
+                    setSchoolUsers([]);
+                    return;
+                }
+                const rows = (await res.json()) as (SubcomisionUser & { id: string })[];
+                setSchoolUsers(rows);
+            } catch {
+                if (!cancelled) setSchoolUsers([]);
+            }
+        };
+        void run();
+        return () => {
+            cancelled = true;
+        };
+    }, [currentUser, isSuperAdmin, selectedSchoolId]);
+
+    useEffect(() => {
+        if (selectedSchoolId !== "all") {
+            return;
+        }
+        if (!currentUser || !isSuperAdmin) {
+            setAllRolesMap(new Map());
+            return;
+        }
+        let cancelled = false;
+        const load = async () => {
+            try {
+                const token = await currentUser.getIdToken();
+                const res = await fetch("/api/admin/staff-directory", {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (cancelled || !res.ok) throw new Error("staff-directory");
+                const json = (await res.json()) as {
+                    rolesByUserId: Record<
+                        string,
+                        { role: string; displayName?: string; subcomisionId: string; socioId?: string }
+                    >;
+                };
+                const rolesMap = new Map<string, UserRoleInfo>();
+                for (const [uidrow, row] of Object.entries(json.rolesByUserId)) {
+                    if (!isUserRoleInfoRole(row.role)) continue;
+                    rolesMap.set(uidrow, {
+                        role: row.role,
+                        displayName: row.displayName,
+                        subcomisionId: row.subcomisionId,
+                        socioId: row.socioId,
+                    });
+                }
+                setAllRolesMap(rolesMap);
+            } catch {
+                if (!cancelled) {
+                    setAllRolesMap(new Map());
+                }
+            }
+        };
+        void load();
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedSchoolId, currentUser, isSuperAdmin]);
 
     const roleMap = useMemo(() => {
         if (selectedSchoolId === "all") return allRolesMap;
         const m = new Map<string, UserRoleInfo>();
         schoolUsers?.forEach((u) => {
+            if (!isUserRoleInfoRole(u.role)) return;
             m.set(u.id, {
                 role: u.role,
                 displayName: u.displayName,

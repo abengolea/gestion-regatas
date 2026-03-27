@@ -26,12 +26,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "../ui/button";
 import { Building, MoreHorizontal, Power, PowerOff, Loader2, Users, ShieldCheck, Edit, BarChart3, UserCheck } from "lucide-react";
-import { useCollection, useFirestore, useUserProfile } from "@/firebase";
+import { useFirestore, useUserProfile } from "@/firebase";
 import { useSubcomisionesList } from "@/hooks/use-subcomisiones-list";
-import { collectionGroup, getDocs } from "firebase/firestore";
-import { doc, updateDoc } from "firebase/firestore";
 import { writeAuditLog } from "@/lib/audit";
-import type { Subcomision, SubcomisionUser, PlatformUser } from "@/lib/types";
+import type { Subcomision, PlatformUser } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
@@ -59,36 +57,73 @@ export function SuperAdminDashboard() {
     const router = useRouter();
     const tabFromUrl = searchParams.get("tab");
     const activeTab = TAB_FROM_URL[tabFromUrl ?? ""] ?? "schools";
-    const { data: subcomisiones, loading: schoolsLoading } = useSubcomisionesList();
+    const { data: subcomisiones, loading: schoolsLoading, refetch: refetchSubcomisiones } = useSubcomisionesList();
     const schools = subcomisiones;
-    const { data: platformUsers, loading: usersLoading } = useCollection<PlatformUser>('platformUsers');
     const firestore = useFirestore();
+    const [platformUsers, setPlatformUsers] = useState<PlatformUser[] | null>(null);
+    const [usersLoading, setUsersLoading] = useState(true);
     const [adminsBySubcomision, setAdminsBySubcomision] = useState<Map<string, { displayName: string; email: string }>>(new Map());
 
+    const { user, isSuperAdmin } = useUserProfile();
+
     useEffect(() => {
-        if (!firestore) return;
-        const load = async () => {
+        if (!user || !isSuperAdmin) {
+            setPlatformUsers(null);
+            setUsersLoading(false);
+            setAdminsBySubcomision(new Map());
+            return;
+        }
+        let cancelled = false;
+        const run = async () => {
+            setUsersLoading(true);
             try {
-                const snap = await getDocs(collectionGroup(firestore, 'users'));
-                const map = new Map<string, { displayName: string; email: string }>();
-                snap.docs.forEach((d) => {
-                    const data = d.data() as SubcomisionUser;
-                    if (data.role !== 'admin_subcomision') return;
-                    const subcomisionId = d.ref.parent.parent?.id;
-                    if (!subcomisionId) return;
-                    map.set(subcomisionId, {
-                        displayName: data.displayName ?? '',
-                        email: data.email ?? '',
-                    });
-                });
-                setAdminsBySubcomision(map);
+                const token = await user.getIdToken();
+                const headers = { Authorization: `Bearer ${token}` };
+                const [puRes, adRes] = await Promise.all([
+                    fetch("/api/admin/platform-users", { headers }),
+                    fetch("/api/admin/subcomision-admins", { headers }),
+                ]);
+                if (cancelled) return;
+                if (puRes.ok) {
+                    const rows = (await puRes.json()) as Array<{
+                        id: string;
+                        email: string;
+                        gerente_club: boolean;
+                        super_admin?: boolean;
+                        createdAt: string;
+                    }>;
+                    setPlatformUsers(
+                        rows.map((r) => ({
+                            id: r.id,
+                            email: r.email,
+                            gerente_club: r.gerente_club,
+                            super_admin: r.super_admin,
+                            createdAt: new Date(r.createdAt),
+                        }))
+                    );
+                } else {
+                    setPlatformUsers([]);
+                }
+                if (adRes.ok) {
+                    const obj = (await adRes.json()) as Record<string, { displayName: string; email: string }>;
+                    setAdminsBySubcomision(new Map(Object.entries(obj)));
+                } else {
+                    setAdminsBySubcomision(new Map());
+                }
             } catch {
-                setAdminsBySubcomision(new Map());
+                if (!cancelled) {
+                    setPlatformUsers([]);
+                    setAdminsBySubcomision(new Map());
+                }
+            } finally {
+                if (!cancelled) setUsersLoading(false);
             }
         };
-        load();
-    }, [firestore]);
-    const { user } = useUserProfile();
+        void run();
+        return () => {
+            cancelled = true;
+        };
+    }, [user, isSuperAdmin]);
     const { toast } = useToast();
     const [updatingSchoolId, setUpdatingSchoolId] = useState<string | null>(null);
 
@@ -97,11 +132,20 @@ export function SuperAdminDashboard() {
     const handleStatusChange = async (subcomisionId: string, currentStatus: 'active' | 'suspended') => {
         setUpdatingSchoolId(subcomisionId);
         const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-        const schoolRef = doc(firestore, 'subcomisiones', subcomisionId);
 
         try {
-            await updateDoc(schoolRef, { status: newStatus });
-            if (user?.uid && user?.email) {
+            const token = await user?.getIdToken();
+            const res = await fetch(`/api/admin/subcomisiones/${encodeURIComponent(subcomisionId)}/status`, {
+                method: "PATCH",
+                headers: {
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ status: newStatus }),
+            });
+            if (!res.ok) throw new Error("status failed");
+            await refetchSubcomisiones();
+            if (user?.uid && user?.email && firestore) {
               await writeAuditLog(firestore, user.email, user.uid, {
                 action: "school.status_change",
                 resourceType: "school",
@@ -114,7 +158,7 @@ export function SuperAdminDashboard() {
                 title: "Estado actualizado",
                 description: `La subcomisión ha sido ${newStatus === 'active' ? 'activada' : 'suspendida'}.`,
             });
-        } catch (error) {
+        } catch {
             toast({
                 variant: "destructive",
                 title: "Error al actualizar",
@@ -129,7 +173,7 @@ export function SuperAdminDashboard() {
         <div className="flex flex-col gap-4 min-w-0">
             <div className="flex items-center justify-between space-y-2">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight font-headline">Panel de Gerente del Clubistrador</h1>
+                    <h1 className="text-3xl font-bold tracking-tight font-headline">Panel de Gerente del Club</h1>
                     <p className="text-muted-foreground">Gestiona las subcomisiones y sus responsables.</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">

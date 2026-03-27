@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import type { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 function ArticleJsonLd({ post }: { post: { title: string; excerpt: string; coverImageUrl?: string; publishedAt?: Date; createdByName: string } }) {
   const jsonLd = {
     "@context": "https://schema.org",

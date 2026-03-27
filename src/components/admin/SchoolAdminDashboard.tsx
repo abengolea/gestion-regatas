@@ -13,9 +13,18 @@ import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection, useUserProfile, useDoc } from "@/firebase";
 import type { Socio, Subcomision as SchoolType } from "@/lib/types";
+import { isSubcomisionModuleEnabled } from "@/lib/subcomision-modules";
 import { getBirthYearLabel } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import React, { useMemo } from "react";
+
+function panelTitleForRole(role: string | undefined) {
+  if (role === "admin_subcomision") return "Administración";
+  if (role === "encargado_deportivo") return "Entrenador";
+  if (role === "editor") return "Edición";
+  if (role === "viewer") return "Consulta";
+  return "Subcomisión";
+}
 
 export function SubcomisionAdminDashboard() {
   const { profile, isReady, activeSchoolId } = useUserProfile();
@@ -30,6 +39,10 @@ export function SubcomisionAdminDashboard() {
   );
 
   const activePlayers = useMemo(() => (socios ?? []).filter((p) => !p.archived), [socios]);
+  const showAttendanceInDashboard = isSubcomisionModuleEnabled(
+    school?.moduleFlags,
+    "attendance"
+  );
 
   // Jugadores más recientes (ya vienen ordenados por createdAt desc desde Firestore)
   const playersByCategory = useMemo(() => {
@@ -100,16 +113,18 @@ export function SubcomisionAdminDashboard() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between space-y-2">
         <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Panel de {profile?.role === 'admin_subcomision' ? 'Administración' : 'Entrenador'}</h1>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Panel de {panelTitleForRole(profile?.role)}</h1>
             <p className="text-muted-foreground">Bienvenido, {profile?.displayName}.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {showAttendanceInDashboard && (
           <Button asChild variant={profile?.role === 'encargado_deportivo' ? 'default' : 'outline'}>
             <Link href="/dashboard/attendance">
                 <ClipboardCheck className="mr-2 h-4 w-4" />
                 Tomar asistencia
             </Link>
           </Button>
+          )}
           <Button asChild variant="outline">
             <Link href="/dashboard/players/new">
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -119,6 +134,7 @@ export function SubcomisionAdminDashboard() {
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {showAttendanceInDashboard && (
         <Link href="/dashboard/attendance">
           <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -132,6 +148,7 @@ export function SubcomisionAdminDashboard() {
             </CardContent>
           </Card>
         </Link>
+        )}
         <Link href={activeSchoolId ? `/dashboard/players?subcomisionId=${activeSchoolId}` : "/dashboard/players"}>
           <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -175,7 +192,7 @@ export function SubcomisionAdminDashboard() {
           <CardHeader>
             <CardTitle>Jugadores Añadidos Recientemente</CardTitle>
             <CardDescription>
-              Últimos jugadores registrados en la escuela.
+              Últimos jugadores registrados en la subcomisión.
             </CardDescription>
           </CardHeader>
           <CardContent>

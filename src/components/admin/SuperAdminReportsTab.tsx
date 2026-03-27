@@ -34,8 +34,7 @@ import {
   ArrowRight,
   Loader2,
 } from "lucide-react";
-import { useFirestore } from "@/firebase";
-import { collectionGroup, getDocs, query, limit } from "firebase/firestore";
+import { useUserProfile } from "@/firebase";
 import type { Subcomision, PlatformUser, Socio } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -93,47 +92,74 @@ export function SuperAdminReportsTab({
 }: SuperAdminReportsTabProps) {
   const subcomisiones = subcomisionesProp ?? schools ?? null;
   const router = useRouter();
-  const firestore = useFirestore();
+  const { user, isSuperAdmin } = useUserProfile();
   const [allPlayers, setAllPlayers] = useState<PlayerWithSchoolId[]>([]);
   const [sociosLoading, setPlayersLoading] = useState(true);
 
   useEffect(() => {
+    if (!user || !isSuperAdmin) {
+      setAllPlayers([]);
+      setPlayersLoading(false);
+      return;
+    }
     let cancelled = false;
     setPlayersLoading(true);
-    const q = query(collectionGroup(firestore, "players"), limit(5000));
-    getDocs(q)
-      .then((snap) => {
+    const run = async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/admin/socios-aggregate", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (cancelled || !res.ok) throw new Error("aggregate failed");
+        const json = (await res.json()) as { items: Record<string, unknown>[] };
         if (cancelled) return;
-        const list: PlayerWithSchoolId[] = [];
-        snap.docs.forEach((d) => {
-          const pathParts = d.ref.path.split("/");
-          const schoolId = pathParts[1];
-          const data = d.data();
-          const createdAt = data.createdAt?.toDate?.() ?? new Date();
-          list.push({
-            id: d.id,
-            schoolId,
-            firstName: data.firstName ?? "",
-            lastName: data.lastName ?? "",
-            birthDate: data.birthDate?.toDate?.() ?? new Date(),
-            tutorContact: data.tutorContact ?? { name: "", phone: "" },
-            status: data.status ?? "active",
+        const list: PlayerWithSchoolId[] = json.items.map((item) => {
+          const createdAt = item.createdAt ? new Date(String(item.createdAt)) : new Date();
+          const birthRaw = item.birthDate;
+          const birthDate =
+            birthRaw != null && String(birthRaw)
+              ? new Date(String(birthRaw))
+              : new Date();
+          return {
+            id: String(item.id),
+            schoolId: String(item.subcomisionId),
+            nombre: String(item.nombre ?? ""),
+            apellido: String(item.apellido ?? ""),
+            firstName: String(item.firstName ?? item.nombre ?? ""),
+            lastName: String(item.lastName ?? item.apellido ?? ""),
+            email: String(item.email ?? ""),
+            dni: String(item.dni ?? ""),
+            telefono: item.telefono != null ? String(item.telefono) : undefined,
+            fechaNacimiento: item.fechaNacimiento != null ? String(item.fechaNacimiento) : undefined,
+            tipoSocio: (item.tipoSocio as Socio["tipoSocio"]) ?? "general",
+            esFederado: Boolean(item.esFederado),
+            esVitalicio: Boolean(item.esVitalicio),
+            estaActivo: Boolean(item.estaActivo),
+            subcomisiones: Array.isArray(item.subcomisiones)
+              ? (item.subcomisiones as string[])
+              : [String(item.subcomisionId)],
+            numeroSocio: String(item.numeroSocio ?? ""),
+            fechaAlta: item.fechaAlta != null ? String(item.fechaAlta) : "",
+            status: (item.status as Socio["status"]) ?? "active",
+            birthDate,
+            tutorContact: (item.tutorContact as PlayerWithSchoolId["tutorContact"]) ?? { name: "", phone: "" },
             createdAt,
-            createdBy: data.createdBy ?? "",
-            archived: data.archived ?? false,
-            ...data,
-          } as PlayerWithSchoolId);
+            createdBy: String(item.createdBy ?? ""),
+            archived: Boolean(item.archived),
+          } as PlayerWithSchoolId;
         });
         setAllPlayers(list);
-      })
-      .catch(() => setAllPlayers([]))
-      .finally(() => {
+      } catch {
+        if (!cancelled) setAllPlayers([]);
+      } finally {
         if (!cancelled) setPlayersLoading(false);
-      });
+      }
+    };
+    void run();
     return () => {
       cancelled = true;
     };
-  }, [firestore]);
+  }, [user, isSuperAdmin]);
 
   const playersBySchool = useMemo(() => {
     const map = new Map<string, { count: number; active: number }>();
@@ -158,7 +184,7 @@ export function SuperAdminReportsTab({
   const handleExportSchools = () => {
     if (!subcomisiones?.length) return;
     downloadCsv(
-      `escuelas-${format(new Date(), "yyyy-MM-dd")}.csv`,
+      `subcomisiones-${format(new Date(), "yyyy-MM-dd")}.csv`,
       ["Nombre", "Ciudad", "Provincia", "Dirección", "Estado", "Fecha creación"],
       subcomisiones.map((s) => [
         s.name,
@@ -189,7 +215,7 @@ export function SuperAdminReportsTab({
     const schoolNames = new Map(subcomisiones.map((s: Subcomision) => [s.id, s.name]));
     downloadCsv(
       `jugadores-${format(new Date(), "yyyy-MM-dd")}.csv`,
-      ["Escuela", "Nombre", "Apellido", "Estado", "Archivado", "Fecha creación"],
+      ["Subcomisión", "Nombre", "Apellido", "Estado", "Archivado", "Fecha creación"],
       allPlayers.map((p) => [
         schoolNames.get(p.schoolId) ?? p.schoolId,
         p.firstName,
@@ -217,7 +243,7 @@ export function SuperAdminReportsTab({
             Métricas globales
           </CardTitle>
           <CardDescription>
-            Totales y distribución de jugadores por escuela.
+            Totales y distribución de jugadores por subcomisión.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -238,7 +264,7 @@ export function SuperAdminReportsTab({
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Escuelas</CardTitle>
+                <CardTitle className="text-sm font-medium">Subcomisiones</CardTitle>
                 <Building className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -268,13 +294,13 @@ export function SuperAdminReportsTab({
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Ir a escuela</CardTitle>
+                <CardTitle className="text-sm font-medium">Ir a subcomisión</CardTitle>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <Select onValueChange={handleQuickAccess}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccionar escuela..." />
+                    <SelectValue placeholder="Seleccionar subcomisión..." />
                   </SelectTrigger>
                   <SelectContent>
                     {schoolList.map((s) => (
@@ -289,12 +315,12 @@ export function SuperAdminReportsTab({
           </div>
 
           <div>
-            <h3 className="text-sm font-medium mb-2">Jugadores por escuela</h3>
+            <h3 className="text-sm font-medium mb-2">Jugadores por subcomisión</h3>
             <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Escuela</TableHead>
+                    <TableHead>Subcomisión</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Activos</TableHead>
                   </TableRow>
@@ -346,7 +372,7 @@ export function SuperAdminReportsTab({
             onClick={handleExportSchools}
             disabled={!subcomisiones?.length}
           >
-            Exportar escuelas
+            Exportar subcomisiones
           </Button>
           <Button
             variant="outline"

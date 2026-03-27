@@ -56,6 +56,12 @@ service cloud.firestore {
       return isGerenteClub() || isStaffOfSubcomision(subcomisionId) || isEditorOrViewer(subcomisionId);
     }
 
+    // Solo puede tocarse la raíz subcomisiones/{id} desde cliente con mapa ventaAbonoPublica (checkout abonos web).
+    function subcomisionVentaAbonoPublicaUpdateOnly(subcomisionId) {
+      return isStaffOfSubcomision(subcomisionId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ventaAbonoPublica']);
+    }
+
     function isOwnSocio(subcomisionId, socioId) {
       return isSignedIn()
         && request.auth.token.email != null
@@ -73,6 +79,13 @@ service cloud.firestore {
 
     function isComercio() {
       return isSignedIn() && exists(/databases/$(database)/documents/comercios/$(request.auth.uid));
+    }
+
+    // Auditoría (escritura desde cliente solo gerente; lectura solo gerente)
+    match /auditLog/{entryId} {
+      allow read: if isGerenteClub();
+      allow create: if isGerenteClub();
+      allow update, delete: if false;
     }
 
     // --- Solo para chequeo de gerente_club ---
@@ -104,7 +117,8 @@ service cloud.firestore {
 
     match /subcomisiones/{subcomisionId} {
       allow read: if isSignedIn() && (isGerenteClub() || isStaffOfSubcomision(subcomisionId));
-      allow create, update: if isGerenteClub();
+      allow create: if isGerenteClub();
+      allow update: if isGerenteClub() || subcomisionVentaAbonoPublicaUpdateOnly(subcomisionId);
       allow delete: if false;
     }
 
@@ -131,16 +145,32 @@ service cloud.firestore {
       allow read, write: if isGerenteClub() || isStaffOfSubcomision(subcomisionId);
     }
 
-    // Evaluaciones de socios
+    // Venta de entradas / plateas (eventos y plano de asientos; cobro vía API Admin)
+    match /subcomisiones/{subcomisionId}/plateasEventos/{eventId} {
+      allow read, write: if isGerenteClub() || isStaffOfSubcomision(subcomisionId);
+      match /asientos/{asientoId} {
+        allow read, write: if isGerenteClub() || isStaffOfSubcomision(subcomisionId);
+      }
+    }
+
+    // Evaluaciones de socios (los docs usan playerId; legacy puede tener socioId)
     match /subcomisiones/{subcomisionId}/evaluations/{evalId} {
-      allow read: if isSignedIn() && (canReadInSubcomision(subcomisionId) || resource.data.socioId != null && (isOwnSocio(subcomisionId, resource.data.socioId) || hasSocioLoginFor(subcomisionId, resource.data.socioId)));
+      allow read: if isSignedIn() && (
+        canReadInSubcomision(subcomisionId)
+        || (resource.data.socioId != null && (isOwnSocio(subcomisionId, resource.data.socioId) || hasSocioLoginFor(subcomisionId, resource.data.socioId)))
+        || (resource.data.playerId != null && (isOwnSocio(subcomisionId, resource.data.playerId) || hasSocioLoginFor(subcomisionId, resource.data.playerId)))
+      );
       allow create, update: if isStaffOfSubcomision(subcomisionId);
       allow delete: if isStaffOfSubcomision(subcomisionId);
     }
 
     // Evaluaciones físicas y config
     match /subcomisiones/{subcomisionId}/physicalAssessments/{docId} {
-      allow read: if isSignedIn() && (canReadInSubcomision(subcomisionId) || resource.data.socioId != null && (isOwnSocio(subcomisionId, resource.data.socioId) || hasSocioLoginFor(subcomisionId, resource.data.socioId)));
+      allow read: if isSignedIn() && (
+        canReadInSubcomision(subcomisionId)
+        || (resource.data.socioId != null && (isOwnSocio(subcomisionId, resource.data.socioId) || hasSocioLoginFor(subcomisionId, resource.data.socioId)))
+        || (resource.data.playerId != null && (isOwnSocio(subcomisionId, resource.data.playerId) || hasSocioLoginFor(subcomisionId, resource.data.playerId)))
+      );
       allow create, update: if isStaffOfSubcomision(subcomisionId);
       allow delete: if isStaffOfSubcomision(subcomisionId);
     }
@@ -149,9 +179,13 @@ service cloud.firestore {
       allow write: if isStaffOfSubcomision(subcomisionId);
     }
 
-    // Videoteca de socios
+    // Videoteca de socios (queries filtran por playerId en varias pantallas)
     match /subcomisiones/{subcomisionId}/socioVideos/{videoId} {
-      allow read: if isSignedIn() && (canReadInSubcomision(subcomisionId) || resource.data.socioId != null && (isOwnSocio(subcomisionId, resource.data.socioId) || hasSocioLoginFor(subcomisionId, resource.data.socioId)));
+      allow read: if isSignedIn() && (
+        canReadInSubcomision(subcomisionId)
+        || (resource.data.socioId != null && (isOwnSocio(subcomisionId, resource.data.socioId) || hasSocioLoginFor(subcomisionId, resource.data.socioId)))
+        || (resource.data.playerId != null && (isOwnSocio(subcomisionId, resource.data.playerId) || hasSocioLoginFor(subcomisionId, resource.data.playerId)))
+      );
       allow create, update, delete: if isStaffOfSubcomision(subcomisionId);
     }
 

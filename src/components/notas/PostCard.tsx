@@ -13,26 +13,26 @@ export function PostCard({ post }: PostCardProps) {
   const href = `/escuelas/${post.subcomisionSlug}/notas/${post.slug}`;
 
   return (
-    <article className="group rounded-lg border bg-card overflow-hidden transition-shadow hover:shadow-md">
-      <Link href={href} className="block">
+    <article className="group rounded-lg border bg-card overflow-hidden transition-shadow hover:shadow-lg focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+      <Link href={href} className="block focus:outline-none">
         {post.coverImageUrl ? (
           <div className="relative aspect-video w-full overflow-hidden bg-muted">
             <Image
               src={post.coverImageUrl}
               alt=""
               fill
-              className="object-cover transition-transform group-hover:scale-105"
+              className="object-cover transition-transform duration-300 ease-out group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           </div>
         ) : (
           <div className="aspect-video w-full bg-muted" aria-hidden />
         )}
-        <div className="p-4">
+        <div className="p-4 sm:p-5">
           <span className="text-xs font-medium text-muted-foreground">
             {post.schoolName}
           </span>
-          <h2 className="mt-1 font-headline font-semibold text-lg line-clamp-2">
+          <h2 className="mt-1 font-headline font-semibold text-base sm:text-lg line-clamp-2 group-hover:text-primary transition-colors">
             {post.title}
           </h2>
           {post.excerpt && (
@@ -40,7 +40,7 @@ export function PostCard({ post }: PostCardProps) {
               {post.excerpt}
             </p>
           )}
-          <div className="mt-3 flex items-center justify-between gap-2">
+          <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
             <time
               dateTime={post.publishedAt ? post.publishedAt.toISOString() : post.createdAt.toISOString()}
               className="text-xs text-muted-foreground"

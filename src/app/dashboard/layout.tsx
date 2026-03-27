@@ -7,9 +7,9 @@ import { useUserProfile, useDoc } from "@/firebase";
 import { isPlayerProfileComplete } from "@/lib/utils";
 import type { Socio } from "@/lib/types";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 
-export default function DashboardLayout({
+function DashboardLayoutInner({
   children,
 }: {
   children: React.ReactNode;
@@ -78,5 +78,26 @@ export default function DashboardLayout({
           </main>
         </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+function DashboardLayoutFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen gap-3 text-muted-foreground" aria-live="polite">
+      <div className="h-8 w-8 animate-pulse rounded-full bg-primary/20" aria-hidden />
+      <p className="text-sm font-medium">Cargando...</p>
+    </div>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense fallback={<DashboardLayoutFallback />}>
+      <DashboardLayoutInner>{children}</DashboardLayoutInner>
+    </Suspense>
   );
 }

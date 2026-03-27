@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Banknote, ArrowLeft } from "lucide-react";
  * Cuando la integración real con Mercado Pago esté lista, el link de pago
  * llevará a init_point de MP y el alumno no verá esta página.
  */
-export default function CheckoutPage() {
+function CheckoutPageContent() {
   const searchParams = useSearchParams();
   const preference = searchParams.get("preference") ?? "";
 
@@ -47,5 +48,29 @@ export default function CheckoutPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function CheckoutFallback() {
+  return (
+    <div className="container max-w-lg py-8">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Banknote className="h-5 w-5" />
+            Pago de cuota
+          </CardTitle>
+          <CardDescription>Cargando…</CardDescription>
+        </CardHeader>
+      </Card>
+    </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<CheckoutFallback />}>
+      <CheckoutPageContent />
+    </Suspense>
   );
 }

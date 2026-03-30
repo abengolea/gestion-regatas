@@ -10,21 +10,7 @@
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
 import * as admin from 'firebase-admin';
-
-/** Normaliza celular argentino al formato internacional (54 + 9/10 dígitos) */
-function normalizeArgentinePhone(input: string | null | undefined): string {
-  if (!input || typeof input !== 'string') return '';
-
-  let s = input.replace(/[\s\-\(\)\+]/g, '');
-  if (s.startsWith('0')) {
-    s = '54' + s.slice(1);
-  } else if (!s.startsWith('54')) {
-    s = '54' + s;
-  }
-  const digits = s.replace(/\D/g, '');
-  if (digits.length < 12 || digits.length > 13) return '';
-  return digits;
-}
+import { canonicalPhoneForNotificasHubMembership } from '../notificashub-phone';
 
 /** Obtiene Firestore del Hub NotificasHub (proyecto distinto) */
 function getHubFirestore(): admin.firestore.Firestore {
@@ -69,7 +55,7 @@ export const onSocioCreated = onDocumentCreated(
     const data = snapshot.data();
     const celular =
       data.tutorContact?.phone ?? data.telefono ?? data.celularPadre ?? '';
-    const phone = normalizeArgentinePhone(celular);
+    const phone = canonicalPhoneForNotificasHubMembership(celular);
     if (!phone) {
       logger.debug(
         `onSocioCreated: socio ${event.params.socioId} sin celular válido, skip`

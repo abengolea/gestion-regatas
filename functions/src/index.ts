@@ -84,7 +84,7 @@ async function ensureEmailSent(
   await db.collection('emailEvents').add({
     type,
     playerId,
-    schoolId,
+    schoolId: subcomisionId,
     period,
     idempotencyKey: key,
     sentAt: adminFs.firestore.Timestamp.now(),
@@ -121,7 +121,7 @@ export const enforceDelinquencyAndSuspensions = onSchedule(
     logger.info('Starting enforceDelinquencyAndSuspensions');
     const now = new Date();
 
-    const subcomisionesSnap = await db.collection('schools').get();
+    const schoolsSnap = await db.collection('schools').get();
     let processed = 0;
     let suspended = 0;
     let emailsSent = 0;
@@ -145,7 +145,7 @@ export const enforceDelinquencyAndSuspensions = onSchedule(
       const daysSusp = config?.delinquencyDaysSuspension ?? 30;
       if (amount <= 0) continue;
 
-      const sociosSnap = await db
+      const playersSnap = await db
         .collection('schools')
         .doc(schoolId)
         .collection('players')
@@ -154,7 +154,7 @@ export const enforceDelinquencyAndSuspensions = onSchedule(
 
       for (const playerDoc of playersSnap.docs) {
         const playerId = playerDoc.id;
-        const socioData = playerDoc.data();
+        const playerData = playerDoc.data();
         const playerName = `${playerData.firstName ?? ''} ${playerData.lastName ?? ''}`.trim();
         const toEmail = playerData.email;
         const createdAt = playerData.createdAt?.toDate?.() ?? new Date(playerData.createdAt);

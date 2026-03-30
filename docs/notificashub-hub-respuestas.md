@@ -12,7 +12,7 @@
 - **`register-user`:** no es `arrayUnion` de Firestore; hace **append manual** al array si falta el `tenantId`. No reemplaza la membresía entera. Al pasar de 1→2 tenants limpia `wa_last_tenant` y sesiones para forzar nueva elección.
 - **ID en Firestore:** el doc es `sanitizePhone(phone)` (solo dígitos; alineado con `wa_id` de Meta). Argentina: normalizan a `549…` en registro; conviene alinear con lo que Meta envía. Dos variantes de número = **dos documentos**, sin merge automático en el router.
 - **Registro / envío:** `POST /api/register-user` y `DELETE /api/register-user` con `x-internal-token` o `x-internal-secret`; body JSON `{ phone, tenantId }`. Envío: `POST /api/whatsapp/send` o `POST /api/internal/send` (mismo handler) — token obligatorio; `tenantId` en body o header `x-tenant-id`; destino según contrato del handler (p. ej. `to` / `phone`; verificar en el hub).
-- **Webhook:** una URL por tenant (`tenants/{tenantId}.webhookUrl`). Formato `regatas_plus`: cuerpo `{ phone, tenantId, waMessageId, message: { type: "text"|"image", … } }`. Formato `meta`: payload más amplio (`message`, `from`, `contactName`, etc.).
+- **Webhook:** una URL por tenant (`tenants/{tenantId}.webhookUrl`). Para gestión-regatas el doc del tenant debe incluir **`webhookPayloadFormat: "regatas_plus"`** y **`internalAuthHeader: "x-internal-secret"`** (ver README/`setup-tenant-regatas` del hub); si no, el payload cae en formato **Meta** o el header por defecto no coincide. Formato `regatas_plus`: `{ phone, tenantId, waMessageId, message: { type: "text"|"image", … } }`.
 - **`internalSecret`:** por tenant en Firestore; el token del header debe ser el del tenant que corresponda.
 - **Falla del webhook:** formato **meta:** `fetch` síncrono, sin reintentos en código; log y posible fallback al usuario. **`regatas_plus`:** envío asíncrono (`after(...)`); si la respuesta no es OK, sin cola de reintentos en ese código — log + aviso al usuario por WhatsApp.
 
@@ -23,11 +23,11 @@
 | Tema | Dónde está / qué hacer |
 |------|-------------------------|
 | `tenantId` Regatas | Código usa el literal **`regatas`** (`notificashub-register-user.ts`, filtro en `api/whatsapp/incoming/route.ts`). Mantener alineado con el tenant en Firestore del hub. |
-| Webhook entrante | `POST /api/whatsapp/incoming` espera payload tipo `regatas_plus` (phone, tenantId, message, waMessageId). Valida `x-internal-secret` con `NOTIFICASHUB_INTERNAL_SECRET` / `INTERNAL_SECRET`. |
+| Webhook entrante | `POST /api/whatsapp/incoming` espera payload **`regatas_plus`** (configurar así en `tenants/{id}` del hub). Valida secreto con `NOTIFICASHUB_INTERNAL_SECRET` vía **`x-internal-secret`** o **`x-internal-token`**. |
 | Registro de celular | `POST /api/notificashub/register-phone` y sync en alta/edición de jugador llaman a `NOTIFICASHUB_URL/api/register-user` con `tenantId: regatas`. Normalización `549…` en `normalize-phone.ts`. |
 | Multi-tenant | Si un número tiene varios tenants en el hub, el **router del hub** decide si muestra lista o va directo; Regatas solo recibe tráfico cuando el hub enruta con `tenantId === regatas`. |
 
-**No hace falta cambiar código** solo por haber aclarado que el doc era “respuestas del hub”: ya está alineado con `regatas` y el formato descrito. Sí conviene **operativa**: mismo número `549…` en ficha, `register-user` y doc `user_memberships` del hub.
+**Operativa:** mismo número `549…` en ficha, `register-user` y doc `user_memberships` del hub; en Firestore del tenant **`internalAuthHeader`** + **`webhookPayloadFormat`** como arriba.
 
 ---
 

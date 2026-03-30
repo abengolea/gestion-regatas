@@ -1,7 +1,7 @@
 /**
  * POST /api/whatsapp/incoming
- * Recibe mensajes enrutados desde NotificasHub.
- * Verificar x-internal-secret, responder 200 inmediatamente, procesar async.
+ * Recibe mensajes enrutados desde NotificasHub (payload `regatas_plus`).
+ * Auth: `x-internal-secret` (recomendado en hub: `internalAuthHeader`) o `x-internal-token` con el mismo valor.
  */
 
 import { NextResponse } from 'next/server';
@@ -12,10 +12,12 @@ import {
 } from '@/lib/whatsapp/notificashub-env';
 
 export async function POST(request: Request) {
-  const secret = request.headers.get('x-internal-secret');
   const expected = getNotificasHubInternalSecret();
+  const provided =
+    request.headers.get('x-internal-secret') ??
+    request.headers.get('x-internal-token');
 
-  if (!expected || secret !== expected) {
+  if (!expected || provided !== expected) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

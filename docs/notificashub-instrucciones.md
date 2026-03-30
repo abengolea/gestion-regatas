@@ -9,22 +9,26 @@ Guía para **quien configure el hub** o **revise integración** cuando haga falt
 **Colección:** `tenants`  
 **Documento:** debe coincidir con el id que usa Regatas (por defecto `regatas`; si usan otro, ver sección 6).
 
-Campos mínimos típicos:
+Debe alinearse con el README / `scripts/setup-tenant-regatas.ts` del repo **NotificasHub**. Campos clave:
 
 | Campo | Descripción |
 |--------|-------------|
-| `webhookUrl` | URL **HTTPS** del backend Regatas + ruta del webhook (sin barra final en el dominio completo; la ruta es `/api/whatsapp/incoming`). **Ej. prod:** `https://gestion-regatas--regatasadmin-3c6ee.us-east4.hosted.app/api/whatsapp/incoming` |
-| `internalSecret` | Secreto compartido; el mismo valor que Regatas tiene en `NOTIFICASHUB_INTERNAL_SECRET` (ver Secret Manager / env). |
-| `status` | p. ej. `active` |
-| `name` | Nombre visible |
+| `webhookUrl` | URL **HTTPS** de gestión-regatas + `/api/whatsapp/incoming`. Ej.: `https://gestion-regatas--regatasadmin-3c6ee.us-east4.hosted.app/api/whatsapp/incoming` |
+| `internalSecret` | Mismo valor que `NOTIFICASHUB_INTERNAL_SECRET` en Regatas. **Prod:** secreto largo aleatorio. |
+| **`internalAuthHeader`** | **`"x-internal-secret"`** — sin esto el hub puede reenviar con `x-internal-token` por defecto (antes causaba 401 si el backend solo leía el otro header). |
+| **`webhookPayloadFormat`** | **`"regatas_plus"`** — sin esto el hub envía payload estilo **Meta** y este backend no parsea `{ phone, tenantId, message, waMessageId }`. |
+| `referralTokens` | p. ej. `["REGATAS","REGATAS+"]` para enlaces `wa.me?text=…` |
+| `status` / `name` | p. ej. `active`, `Regatas+` |
 
-**Importante:** Si `webhookUrl` apunta a un dominio viejo o a localhost, los mensajes **no** llegan al bot de viajes/comprobantes de Regatas.
+Ejemplo JSON mínimo completo: ver [NOTIFICASHUB-TENANT-CONFIG.md](./NOTIFICASHUB-TENANT-CONFIG.md).
+
+Si `webhookUrl` apunta a un dominio viejo o a localhost, los mensajes no llegan al bot de Regatas.
 
 ---
 
 ## 2. Llamada al webhook (Regatas recibe)
 
-Regatas valida el header **`x-internal-secret`** contra su variable de entorno (no usa el secreto del body).
+Regatas valida el secreto contra `NOTIFICASHUB_INTERNAL_SECRET` usando el header **`x-internal-secret`** o, si falta, **`x-internal-token`** (mismo valor). Conviene configurar en el hub `internalAuthHeader: "x-internal-secret"` para un comportamiento explícito.
 
 **Payload** (formato tipo `regatas_plus`): JSON con al menos:
 
@@ -87,17 +91,20 @@ Comentarios y secretos: ver `apphosting.yaml` (proyecto `regatasadmin-3c6ee`).
 
 ## 7. Cloud Function Regatas (`onSocioCreated`)
 
-Opcional pero recomendada: escribe en **Firestore del hub** `user_memberships` con el mismo criterio de teléfono **canónico** (`549…`). Requiere en Functions: `NOTIFICASHUB_FIREBASE_*` (proyecto del hub). Si no está configurada, sigue valiendo el **`register-user`** HTTP al guardar/editar jugador o importación.
+**Opcional:** escribe en **Firestore del hub** `user_memberships` con teléfono canónico `549…`. Solo hace falta configurar `NOTIFICASHUB_FIREBASE_*` en Firebase Functions si usás **este** camino. El flujo mínimo operativo es **`register-user` por HTTP** al crear/editar/importar jugador; en ese caso **no** necesitás service account del proyecto del hub en Functions.
+
+`NEXT_PUBLIC_CLUB_WA_NUMBER` y las vars **`WHATSAPP_*`** del hub son cosas distintas: la primera es solo el link `wa.me` en la UI de Regatas; las segundas son la cuenta Meta del despliegue NotificasHub.
 
 ---
 
 ## 8. Checklist rápido si “no identifica como Regatas”
 
-1. En hub: `tenants/{id}.webhookUrl` = URL real de App Hosting + `/api/whatsapp/incoming`.
-2. En hub y Regatas: **`internalSecret` / secret** idénticos.
-3. Mismo **`tenantId`** en Firestore, en `register-user`, en payload del webhook y en `NOTIFICASHUB_TENANT_ID` si no es `regatas`.
-4. En hub: documento `user_memberships/{teléfono_en_549}` con `tenantIds` que incluya ese id de tenant.
-5. Usuario con **varias apps**: confirmar que eligió Regatas en el menú del hub, no solo que escribió al número.
+1. En hub: `tenants/{id}` tiene **`internalAuthHeader`: `"x-internal-secret"`** y **`webhookPayloadFormat`: `"regatas_plus"`**.
+2. `webhookUrl` = URL real de App Hosting + `/api/whatsapp/incoming`.
+3. **`internalSecret`** idéntico a `NOTIFICASHUB_INTERNAL_SECRET` en Regatas (prod: secreto fuerte).
+4. Mismo **`tenantId`** en Firestore, en `register-user`, en payload (si viene) y en `NOTIFICASHUB_TENANT_ID` si no es `regatas`.
+5. `user_memberships/{teléfono_en_549}` con `tenantIds` que incluya ese tenant.
+6. Multi-app: el usuario eligió Regatas en el menú del hub cuando correspondía.
 
 ---
 

@@ -71,3 +71,30 @@ export function normalizePhoneForNotificasHub(input: string | null | undefined):
   }
   return '';
 }
+
+/**
+ * Formato unificado para comparar el wa_id de WhatsApp con teléfonos guardados en fichas.
+ * WhatsApp/NotificasHub suelen usar 549… (móvil); números cargados como 11… o 54 11… sin el 9
+ * fallaban al compararse con {@link normalizeArgentinePhone} solo (generaba 5411… vs 54911…).
+ */
+export function canonicalArgentineWhatsAppPhone(input: string | null | undefined): string {
+  if (!input || typeof input !== 'string') return '';
+
+  const fromHub = normalizePhoneForNotificasHub(input.trim());
+  let digits = fromHub || normalizeArgentinePhone(input.trim());
+
+  if (!digits) {
+    const only = input.replace(/\D/g, '');
+    if (only.length >= 12 && only.length <= 13 && only.startsWith('54')) {
+      digits = only;
+    } else {
+      return '';
+    }
+  }
+
+  if (digits.length === 12 && digits.startsWith('54') && digits[2] !== '9') {
+    return `549${digits.slice(2)}`;
+  }
+
+  return digits;
+}

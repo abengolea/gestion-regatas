@@ -9,7 +9,7 @@ import { getAdminFirestore, getAdminStorage } from '@/lib/firebase-admin';
 type Firestore = admin.firestore.Firestore;
 type DocRef = admin.firestore.DocumentReference;
 import { NotificasHubClient } from './NotificasHubClient';
-import { normalizeArgentinePhone } from './normalize-phone';
+import { canonicalArgentineWhatsAppPhone } from './normalize-phone';
 
 export interface NotificasHubPayload {
   phone: string;
@@ -26,8 +26,11 @@ const SESSION_TTL_MINUTES = 30;
 
 export class WhatsAppBotHandler {
   static async handle(payload: NotificasHubPayload): Promise<void> {
-    const phone = normalizeArgentinePhone(payload.phone);
-    if (!phone) return;
+    const phone = canonicalArgentineWhatsAppPhone(payload.phone);
+    if (!phone) {
+      console.warn('[WhatsAppBotHandler] Teléfono no normalizable:', payload.phone);
+      return;
+    }
 
     const db = getAdminFirestore();
     const sessionRef = db.collection('wa_sessions_regatas').doc(phone);
@@ -131,7 +134,14 @@ export class WhatsAppBotHandler {
     const sessionSnap = await sessionRef.get();
     const session = sessionSnap.data();
 
-    if (!session) return;
+    if (!session) {
+      await NotificasHubClient.sendText(
+        phone,
+        'Para registrar un comprobante de viaje, enviá primero la *foto* del comprobante. ' +
+          'Si tu número no está en la ficha del jugador/a (teléfono del tutor), pedile a la escuela que lo actualicen o seguí las instrucciones cuando envíes la imagen.'
+      );
+      return;
+    }
 
     if (session.estado === 'esperando_dni') {
       const dni = text.trim().replace(/\D/g, '');
@@ -239,7 +249,7 @@ export class WhatsAppBotHandler {
   ): Promise<Array<{ subcomisionId: string; socioId: string }>> {
     const subcomisionesSnap = await db.collection('subcomisiones').get();
     const socios: Array<{ subcomisionId: string; socioId: string }> = [];
-    const phoneNorm = normalizeArgentinePhone(phone);
+    const phoneNorm = canonicalArgentineWhatsAppPhone(phone);
 
     for (const subDoc of subcomisionesSnap.docs) {
       const sociosSnap = await db
@@ -251,7 +261,7 @@ export class WhatsAppBotHandler {
       for (const s of sociosSnap.docs) {
         const d = s.data();
         const tutorPhone = d.tutorContact?.phone ?? d.telefono ?? d.celularPadre ?? '';
-        if (normalizeArgentinePhone(tutorPhone) === phoneNorm) {
+        if (canonicalArgentineWhatsAppPhone(tutorPhone) === phoneNorm) {
           socios.push({ subcomisionId: subDoc.id, socioId: s.id });
         }
       }

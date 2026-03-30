@@ -2,6 +2,8 @@
 
 Para que el módulo de Viajes y Pagos funcione con WhatsApp, NotificasHub debe tener configurado el tenant de Regatas+.
 
+**Guía completa y checklist:** [notificashub-instrucciones.md](./notificashub-instrucciones.md)
+
 ## 1. Crear documento en Firestore del Hub
 
 En el proyecto Firebase de NotificasHub, crear:
@@ -14,7 +16,7 @@ En el proyecto Firebase de NotificasHub, crear:
   "name": "Regatas+",
   "status": "active",
   "referralTokens": ["REGATAS", "REGATAS+"],
-  "webhookUrl": "https://regatasplus.com.ar/api/whatsapp/incoming",
+  "webhookUrl": "https://gestion-regatas--regatasadmin-3c6ee.us-east4.hosted.app/api/whatsapp/incoming",
   "internalSecret": "regatas_internal_2026"
 }
 ```

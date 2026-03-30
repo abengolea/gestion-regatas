@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "seed:support": "tsx scripts/seed-support-flows.ts",
     "seed:super-admin": "tsx scripts/create-super-admin.ts",
-    "simulate:payment": "tsx scripts/simulate-electronic-payment.ts"
+    "simulate:payment": "tsx scripts/simulate-electronic-payment.ts",
+    "debug:whatsapp-phone": "tsx scripts/debug-whatsapp-phone.ts"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.20.0",

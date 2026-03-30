@@ -3,7 +3,7 @@
  * Regatas+ — No llama directo a Meta, todo pasa por el hub.
  */
 
-import { getNotificasHubInternalSecret } from './notificashub-env';
+import { getNotificasHubInternalSecret, getNotificasHubTenantId } from './notificashub-env';
 
 export class NotificasHubClient {
   private static getBaseUrl(): string {
@@ -26,7 +26,7 @@ export class NotificasHubClient {
       headers: {
         'Content-Type': 'application/json',
         'x-internal-secret': secret,
-        'x-tenant-id': 'regatas',
+        'x-tenant-id': getNotificasHubTenantId(),
       },
       body: JSON.stringify({
         phone,
@@ -57,7 +57,7 @@ export class NotificasHubClient {
       headers: {
         'Content-Type': 'application/json',
         'x-internal-secret': secret,
-        'x-tenant-id': 'regatas',
+        'x-tenant-id': getNotificasHubTenantId(),
       },
       body: JSON.stringify({
         phone,

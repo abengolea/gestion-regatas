@@ -4,9 +4,7 @@
  */
 
 import { normalizePhoneForNotificasHub } from './normalize-phone';
-import { getNotificasHubInternalSecret } from './notificashub-env';
-
-const TENANT_ID = 'regatas' as const;
+import { getNotificasHubInternalSecret, getNotificasHubTenantId } from './notificashub-env';
 
 export type NotificasHubRegisterResult =
   | { ok: true }
@@ -22,7 +20,9 @@ function getSecret(): string {
 
 function logHttpError(context: string, status: number, bodyPreview: string): void {
   if (status === 401) {
-    console.warn(`[NotificasHub ${context}] 401 — revisá NOTIFICASHUB_INTERNAL_SECRET y tenants/${TENANT_ID}.internalSecret`);
+    console.warn(
+      `[NotificasHub ${context}] 401 — revisá NOTIFICASHUB_INTERNAL_SECRET y tenants/${getNotificasHubTenantId()}.internalSecret`
+    );
     return;
   }
   if (status === 400) {
@@ -57,7 +57,7 @@ export async function registerPhoneWithNotificasHub(rawPhone: string): Promise<N
         'x-internal-secret': secret,
         'x-internal-token': secret,
       },
-      body: JSON.stringify({ phone, tenantId: TENANT_ID }),
+      body: JSON.stringify({ phone, tenantId: getNotificasHubTenantId() }),
     });
 
     const text = await res.text();
@@ -98,7 +98,7 @@ export async function unregisterPhoneFromNotificasHub(rawPhone: string): Promise
         'x-internal-secret': secret,
         'x-internal-token': secret,
       },
-      body: JSON.stringify({ phone, tenantId: TENANT_ID }),
+      body: JSON.stringify({ phone, tenantId: getNotificasHubTenantId() }),
     });
 
     const text = await res.text();

@@ -6,7 +6,10 @@
 
 import { NextResponse } from 'next/server';
 import { WhatsAppBotHandler } from '@/lib/whatsapp/WhatsAppBotHandler';
-import { getNotificasHubInternalSecret } from '@/lib/whatsapp/notificashub-env';
+import {
+  getNotificasHubInternalSecret,
+  getNotificasHubTenantId,
+} from '@/lib/whatsapp/notificashub-env';
 
 export async function POST(request: Request) {
   const secret = request.headers.get('x-internal-secret');
@@ -32,13 +35,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  if (payload.tenantId !== 'regatas') {
+  const ourTenant = getNotificasHubTenantId();
+  const tenantId = payload.tenantId ?? ourTenant;
+  if (tenantId !== ourTenant) {
+    console.warn(
+      '[whatsapp/incoming] Mensaje no procesado: tenantId=',
+      payload.tenantId,
+      'esperado=',
+      ourTenant
+    );
     return NextResponse.json({ ok: true });
   }
 
   const fullPayload = {
     phone: payload.phone,
-    tenantId: payload.tenantId ?? 'regatas',
+    tenantId,
     message: {
       type: (payload.message.type ?? 'text') as 'image' | 'text',
       imageUrl: payload.message.imageUrl,

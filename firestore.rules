@@ -115,8 +115,10 @@ service cloud.firestore {
 
     // --- Reglas principales ---
 
+    // Lectura de la raíz (nombre, moduleFlags, etc.): cualquier rol que ya lee la escuela (incl. editor/viewer).
+    // Antes solo staff; SidebarNav y SubcomisionModuleGuard usan useDoc en esta ruta para todos los no–super-admin.
     match /subcomisiones/{subcomisionId} {
-      allow read: if isSignedIn() && (isGerenteClub() || isStaffOfSubcomision(subcomisionId));
+      allow read: if isSignedIn() && canReadInSubcomision(subcomisionId);
       allow create: if isGerenteClub();
       allow update: if isGerenteClub() || subcomisionVentaAbonoPublicaUpdateOnly(subcomisionId);
       allow delete: if false;
